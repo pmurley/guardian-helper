@@ -57,6 +57,53 @@ type MembershipData struct {
 }
 
 var engramHashes map[uint]bool
+var itemMetadata map[uint]*ItemMetadata
+
+// EquipmentBucket is the type of the key for the bucket type hash lookup
+type EquipmentBucket int
+
+func (bucket EquipmentBucket) String() string {
+	switch bucket {
+	case Primary:
+		return "Primary"
+	case Special:
+		return "Special"
+	case Heavy:
+		return "Heavy"
+	case Ghost:
+		return "Ghost"
+	case Helmet:
+		return "Helmet"
+	case Arms:
+		return "Arms"
+	case Chest:
+		return "Chest"
+	case Legs:
+		return "Legs"
+	case ClassArmor:
+		return "ClassArmor"
+	case Artifact:
+		return "Artifact"
+	}
+
+	return ""
+}
+
+// Equipment bucket type definitions
+const (
+	Primary EquipmentBucket = iota
+	Special
+	Heavy
+	Ghost
+	Helmet
+	Arms
+	Chest
+	Legs
+	ClassArmor
+	Artifact
+)
+
+var bucketHashLookup map[EquipmentBucket]uint
 
 // PopulateEngramHashes will intialize the map holding all item_hash values that represent engram types.
 func PopulateEngramHashes() error {
@@ -72,6 +119,55 @@ func PopulateEngramHashes() error {
 	}
 
 	fmt.Printf("Loaded %d hashes representing engrams into the map.\n", len(engramHashes))
+	return nil
+}
+
+// PopulateItemMetadata is responsible for loading all of the metadata fields that need
+// to be loaded into memory for common inventory related operations.
+func PopulateItemMetadata() error {
+
+	rows, err := db.LoadItemMetadata()
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	itemMetadata = make(map[uint]*ItemMetadata)
+	for rows.Next() {
+		var hash uint
+		itemMeta := ItemMetadata{}
+		rows.Scan(&hash, &itemMeta.TierType, &itemMeta.ClassType)
+
+		itemMetadata[hash] = &itemMeta
+	}
+	if rows.Err() != nil {
+		return rows.Err()
+	}
+	fmt.Printf("Loaded %d item metadata entries\n", len(itemMetadata))
+
+	return nil
+}
+
+// PopulateBucketHashLookup will fill the map that will be used to lookup bucket type hashes
+// which will be used to determine which type of equipment a specific Item represents.
+func PopulateBucketHashLookup() error {
+
+	// TODO: This absolutely needs to be done dynamically from the manifest. Not from a static definition
+	//var err error
+	bucketHashLookup = make(map[EquipmentBucket]uint)
+
+	bucketHashLookup[Primary] = 1498876634
+	bucketHashLookup[Special] = 2465295065
+	bucketHashLookup[Heavy] = 953998645
+	bucketHashLookup[Ghost] = 4023194814
+
+	bucketHashLookup[Helmet] = 3448274439
+	bucketHashLookup[Arms] = 3551918588
+	bucketHashLookup[Chest] = 14239492
+	bucketHashLookup[Legs] = 20886954
+	bucketHashLookup[Artifact] = 434908299
+	bucketHashLookup[ClassArmor] = 1585787867
+
 	return nil
 }
 
@@ -225,6 +321,49 @@ func TransferItem(itemName, accessToken, sourceClass, destinationClass string, c
 	return response, nil
 }
 
+// EquipMaxLightGear will equip all items that are required to have the maximum light on a character
+func EquipMaxLightGear(accessToken string) (*skillserver.EchoResponse, error) {
+	response := skillserver.NewEchoResponse()
+
+	client := NewClient(accessToken, os.Getenv("BUNGIE_API_KEY"))
+
+	itemsChannel := make(chan *AllItemsMsg)
+	go GetAllItemsForCurrentUser(client, itemsChannel)
+
+	itemsJSON := <-itemsChannel
+	if itemsJSON.error != nil {
+		fmt.Println("Failed to read the Items response from Bungie!: ", itemsJSON.error.Error())
+		return nil, itemsJSON.error
+	}
+
+	destinationIndex, err := findDestinationCharacterIndex(itemsJSON.ItemsEndpointResponse.Response.Data.Characters, classHashToName[HUNTER])
+	membershipType := XBOX
+
+	/***** This will be removed when actually hitting the bungie endpoint  ******/
+	// file, err := os.Open("./local_tools/samples/get_all_items_summary-latest.json")
+	// if err != nil {
+	// 	fmt.Printf("Error trying to read all items: %s\n", err.Error())
+	// 	return nil, err
+	// }
+	// var items ItemsEndpointResponse
+	// json.NewDecoder(file).Decode(&items)
+	/***** This will be removed when actually hitting the bungie endpoint  ******/
+
+	loadout := findMaxLightLoadout(itemsJSON.ItemsEndpointResponse, destinationIndex)
+
+	fmt.Printf("Found loadout to equip: %v\n", loadout)
+	fmt.Printf("Calculated light for loadout: %f\n", loadout.calculateLightLevel())
+
+	err = equipLoadout(loadout, destinationIndex, itemsJSON.ItemsEndpointResponse.Response.Data.Characters, membershipType, client)
+	if err != nil {
+		fmt.Println("Failed to equip the specified loadout: ", err.Error())
+		return nil, err
+	}
+
+	response.OutputSpeech("Max light equipped Guardian. You are a force to be wreckoned with.")
+	return response, nil
+}
+
 // UnloadEngrams is responsible for transferring all engrams off of a character and
 func UnloadEngrams(accessToken string) (*skillserver.EchoResponse, error) {
 	response := skillserver.NewEchoResponse()
@@ -303,6 +442,8 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 
 			defer wg.Done()
 
+			fmt.Printf("Transferring item: %+v\n", item)
+
 			// If these items are already in the vault, skip it they will be transferred later
 			if item.CharacterIndex != -1 {
 				// These requests are all going TO the vault, the FROM the vault request
@@ -316,7 +457,6 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 					"membershipType":    membershipType,
 				}
 
-				fmt.Printf("Transferring item: %+v\n", item)
 				client.PostTransferItem(requestBody)
 				time.Sleep(TransferDelay)
 			}
@@ -352,6 +492,44 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 	wg.Wait()
 
 	return totalCount
+}
+
+// equipItems is a generic equip method that will handle a eqipping a specific item on a specific character.
+func equipItems(itemSet []*Item, characterIndex int, characters []*Character, membershipType uint, client *Client) {
+
+	var wg sync.WaitGroup
+
+	for _, item := range itemSet {
+
+		if item.TransferStatus == ItemIsEquipped && item.CharacterIndex == characterIndex {
+			// If this item is already equipped, skip it.
+			fmt.Printf("Skipping item(%d) as it is already equipped\n", item.ItemHash)
+			continue
+		}
+
+		wg.Add(1)
+
+		// TODO: There is an issue were we are getting throttling responses from the Bungie
+		// servers. There will be an extra delay added here to try and avoid the throttling.
+		go func(item *Item, character *Character, membershipType uint, wait *sync.WaitGroup) {
+
+			defer wg.Done()
+
+			fmt.Printf("Equipping item(%d)...\n", item.ItemHash)
+
+			equipRequestBody := map[string]interface{}{
+				"itemId":         item.ItemID,
+				"characterId":    character.CharacterBase.CharacterID,
+				"membershipType": membershipType,
+			}
+
+			client.PostEquipItem(equipRequestBody)
+			//time.Sleep(TransferDelay)
+
+		}(item, characters[characterIndex], membershipType, &wg)
+	}
+
+	wg.Wait()
 }
 
 // AllItemsMsg is a type used by channels that need to communicate back from a

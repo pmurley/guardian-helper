@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http/httputil"
 	"os"
@@ -25,14 +26,47 @@ var (
 	}
 )
 
+var memprofile = flag.String("memprofile", "", "write memory profile to this file")
+
 func main() {
 
+	flag.Parse()
 	port := os.Getenv("PORT")
 
 	err := bungie.PopulateEngramHashes()
 	if err != nil {
+		fmt.Printf("Error populating engram hashes: %s\nExiting...", err.Error())
 		return
 	}
+	err = bungie.PopulateBucketHashLookup()
+	if err != nil {
+		fmt.Printf("Error populating bucket hash values: %s\nExiting...", err.Error())
+		return
+	}
+	err = bungie.PopulateItemMetadata()
+	if err != nil {
+		fmt.Printf("Error populating item metadata lookup table: %s\nExiting...", err.Error())
+		return
+	}
+
+	//bungie.EquipMaxLightGear("access-token")
+
+	// c := make(chan os.Signal, 1)
+	// signal.Notify(c, os.Interrupt)
+	// go func() {
+	// 	for _ = range c {
+	// 		if *memprofile != "" {
+	// 			f, err := os.Create(*memprofile)
+	// 			if err != nil {
+	// 				log.Fatal(err)
+	// 			}
+	// 			pprof.WriteHeapProfile(f)
+	// 			f.Close()
+	// 			os.Exit(1)
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 	fmt.Println(fmt.Sprintf("Start listening on port(%s)", port))
 	skillserver.Run(Applications, port)
@@ -79,6 +113,8 @@ func EchoIntentHandler(echoRequest *skillserver.EchoRequest, echoResponse *skill
 		response = alexa.PopularWeaponTypes()
 	} else if intentName == "UnloadEngrams" {
 		response = alexa.UnloadEngrams(echoRequest)
+	} else if intentName == "EquipMaxLight" {
+		response = alexa.MaxLight(echoRequest)
 	} else if intentName == "AMAZON.HelpIntent" {
 		response = alexa.HelpPrompt(echoRequest)
 	} else if intentName == "AMAZON.StopIntent" {

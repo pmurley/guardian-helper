@@ -28,6 +28,8 @@ type CharacterBase struct {
 	ClassType              uint      `json:"ClassType"`
 }
 
+// findDestinationCharacter will find the first character matching the provided class name
+// or an error if the account doesn't have a class of the specified type.
 func findDestinationCharacter(characters []*Character, class string) (*Character, error) {
 
 	if class == "vault" {
@@ -42,4 +44,22 @@ func findDestinationCharacter(characters []*Character, class string) (*Character
 	}
 
 	return nil, errors.New("could not find the specified destination character")
+}
+
+// finDestinationCharacterIndex will find the first index of a character with the provided class name
+// or an error if the account doesn't have a character of the specified class.
+func findDestinationCharacterIndex(characters []*Character, class string) (int, error) {
+
+	if class == "vault" {
+		return -1, nil
+	}
+
+	destinationHash := classNameToHash[class]
+	for index, char := range characters {
+		if char.CharacterBase.ClassHash == destinationHash {
+			return index, nil
+		}
+	}
+
+	return -2, errors.New("No character of that type on this account")
 }
