@@ -20,6 +20,11 @@ const (
 	TransferDelay = 750 * time.Millisecond
 )
 
+var (
+	// Clients stores a list of bungie.Client instances that can be used to make HTTP requests to the Bungie API
+	Clients = NewClientPool()
+)
+
 // BaseResponse represents the data returned as part of all of the Bungie API
 // requests.
 type BaseResponse struct {
@@ -180,9 +185,9 @@ func PopulateBucketHashLookup() error {
 func MembershipIDFromDisplayName(displayName string) string {
 
 	endpoint := fmt.Sprintf(MembershipIDFromDisplayNameFormat, XBOX, displayName)
-	client := NewClient("", os.Getenv("BUNGIE_API_KEY"))
+	client := Clients.Get()
 	request, _ := http.NewRequest("GET", endpoint, nil)
-	request.Header.Add("X-Api-Key", client.APIToken)
+	request.Header.Add("X-Api-Key", os.Getenv("BUNGIE_API_KEY"))
 
 	membershipResponse, err := client.Do(request)
 	if err != nil {
@@ -206,7 +211,8 @@ func CountItem(itemName, accessToken string) (*skillserver.EchoResponse, error) 
 
 	response := skillserver.NewEchoResponse()
 
-	client := NewClient(accessToken, os.Getenv("BUNGIE_API_KEY"))
+	client := Clients.Get()
+	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
 	// Load all items on all characters
 	itemsChannel := make(chan *AllItemsMsg)
@@ -257,7 +263,8 @@ func CountItem(itemName, accessToken string) (*skillserver.EchoResponse, error) 
 func TransferItem(itemName, accessToken, sourceClass, destinationClass string, count int) (*skillserver.EchoResponse, error) {
 	response := skillserver.NewEchoResponse()
 
-	client := NewClient(accessToken, os.Getenv("BUNGIE_API_KEY"))
+	client := Clients.Get()
+	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
 	itemsChannel := make(chan *AllItemsMsg)
 	go GetAllItemsForCurrentUser(client, itemsChannel)
@@ -327,7 +334,8 @@ func TransferItem(itemName, accessToken, sourceClass, destinationClass string, c
 func EquipMaxLightGear(accessToken string) (*skillserver.EchoResponse, error) {
 	response := skillserver.NewEchoResponse()
 
-	client := NewClient(accessToken, os.Getenv("BUNGIE_API_KEY"))
+	client := Clients.Get()
+	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
 	itemsChannel := make(chan *AllItemsMsg)
 	go GetAllItemsForCurrentUser(client, itemsChannel)
@@ -362,7 +370,8 @@ func EquipMaxLightGear(accessToken string) (*skillserver.EchoResponse, error) {
 func UnloadEngrams(accessToken string) (*skillserver.EchoResponse, error) {
 	response := skillserver.NewEchoResponse()
 
-	client := NewClient(accessToken, os.Getenv("BUNGIE_API_KEY"))
+	client := Clients.Get()
+	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
 	itemsChannel := make(chan *AllItemsMsg)
 	go GetAllItemsForCurrentUser(client, itemsChannel)
