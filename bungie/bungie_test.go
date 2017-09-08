@@ -49,6 +49,93 @@ func BenchmarkMaxLight(b *testing.B) {
 	}
 }
 
+func TestParseCurrentMembershipsResponse(t *testing.T) {
+	data, err := readSample("GetMembershipsForCurrentUser.json")
+	if err != nil {
+		fmt.Println("Error reading sample file: ", err.Error())
+		t.FailNow()
+	}
+
+	var response CurrentUserMembershipsResponse
+	err = json.Unmarshal(data, &response)
+	if err != nil {
+		fmt.Println("Error unmarshaling json: ", err.Error())
+		t.FailNow()
+	}
+
+	if response.Response.BungieNetUser == nil {
+		t.FailNow()
+	}
+
+	if response.Response.DestinyMemberships == nil {
+		t.FailNow()
+	}
+	if len(response.Response.DestinyMemberships) != 2 {
+		t.FailNow()
+	}
+	for _, membership := range response.Response.DestinyMemberships {
+		if membership.DisplayName == "" || membership.MembershipID == "" || membership.MembershipType <= 0 {
+			t.FailNow()
+		}
+		//fmt.Printf("Display name=%s, membershipID=%s, membershipType=%d\n", membership.DisplayName, membership.MembershipID, membership.MembershipType)
+	}
+}
+
+func TestParseGetProfileResponse(t *testing.T) {
+	data, err := readSample("GetProfile.json")
+	if err != nil {
+		fmt.Println("Error reading sample file: ", err.Error())
+		t.FailNow()
+	}
+
+	var response GetProfileResponse
+	err = json.Unmarshal(data, &response)
+	if err != nil {
+		fmt.Println("Error unmarshaling json: ", err.Error())
+		t.FailNow()
+	}
+
+	if response.Response.Profile == nil || response.Response.ProfileCurrencies == nil ||
+		response.Response.ProfileInventory == nil || response.Response.CharacterEquipment == nil ||
+		response.Response.CharacterInventories == nil || response.Response.Characters == nil {
+		fmt.Println("One of the expected entries is nil!")
+		t.FailNow()
+	}
+
+	if len(response.Response.Characters.Data) != 3 {
+		t.FailNow()
+	}
+
+	if len(response.Response.ProfileCurrencies.Data.Items) != 1 {
+		t.FailNow()
+	}
+
+	if len(response.Response.CharacterEquipment.Data) == 0 || len(response.Response.CharacterInventories.Data) == 0 {
+		t.FailNow()
+	}
+
+	for _, char := range response.Response.CharacterEquipment.Data {
+		for _, item := range char.Items {
+			if item.InstanceID == "" {
+				t.FailNow()
+			}
+		}
+	}
+
+	if response.Response.ProfileCurrencies.Data.Items[0].InstanceID != "" {
+		t.FailNow()
+	}
+}
+
+func readSample(name string) ([]byte, error) {
+	f, err := os.Open("../local_tools/samples/" + name)
+	if err != nil {
+		return nil, err
+	}
+
+	return ioutil.ReadAll(f)
+}
+
 func loadItemEndpointResponse() (*ItemsEndpointResponse, error) {
 
 	f, err := os.Open("../local_tools/samples/get_all_items_summary-latest.json")

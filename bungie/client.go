@@ -152,7 +152,7 @@ func (c *Client) GetCurrentAccount() (*GetAccountResponse, error) {
 // GetUserItems will make a request to the bungie API and retrieve all of the
 // items for a specific Destiny membership ID. This includes all of their characters
 // as well as the vault. The vault with have a character index of -1.
-func (c *Client) GetUserItems(membershipType uint, membershipID string) (*ItemsEndpointResponse, error) {
+func (c *Client) GetUserItems(membershipType int, membershipID string) (*ItemsEndpointResponse, error) {
 	endpoint := fmt.Sprintf(ItemsEndpointFormat, membershipType, membershipID)
 
 	req, _ := http.NewRequest("GET", endpoint, nil)

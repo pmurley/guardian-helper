@@ -35,12 +35,123 @@ type BaseResponse struct {
 	MessageData     interface{} `json:"MessageData"`
 }
 
+// CurrentUserMembershipsResponse contains information about the membership data for the currently
+// authorized user. The request for this information will use the access_token to determine the current user
+// https://bungie-net.github.io/multi/operation_get_User-GetMembershipDataForCurrentUser.html#operation_get_User-GetMembershipDataForCurrentUser
+type CurrentUserMembershipsResponse struct {
+	*BaseResponse
+	Response *struct {
+		DestinyMemberships []*struct {
+			DisplayName    string `json:"displayName"`
+			MembershipType int    `json:"membershipType"`
+			MembershipID   string `json:"membershipId"`
+		} `json:"destinyMemberships"`
+		BungieNetUser interface{} `json:"bungieNetUser"`
+	} `json:"Response"`
+}
+
+// GetProfileResponse is the response from the GetProfile endpoint. This data contains information about
+// the characeters, inventories, profile inventory, and equipped loadouts.
+// https://bungie-net.github.io/multi/operation_get_Destiny2-GetProfile.html#operation_get_Destiny2-GetProfile
+type GetProfileResponse struct {
+	*BaseResponse
+	Response *struct {
+		Profile *struct {
+			//https://bungie-net.github.io/multi/schema_Destiny-Entities-Profiles-DestinyProfileComponent.html#schema_Destiny-Entities-Profiles-DestinyProfileComponent
+			Data *struct {
+				UserInfo *struct {
+					MembershipType int    `json:"membershipType"`
+					MembershipID   string `json:"membershipId"`
+					DisplayName    string `json:"displayName"`
+				} `json:"userInfo"`
+			} `json:"data"`
+		} `json:"profile"`
+		CharacterInventories *struct {
+			Data map[string]*struct {
+				Items []*struct {
+					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
+					ItemHash       uint   `json:"itemHash"`
+					InstanceID     string `json:"itemInstanceId"`
+					BucketHash     uint   `json:"bucketHash"`
+					Lockable       bool   `json:"lockable"`
+					BindStatus     int    `json:"bindStatus"`
+					State          int    `json:"state"`
+					Location       int    `json:"location"`
+					TransferStatus int    `json:"transferStatus"`
+					Quantity       int    `json:"quantity"`
+				} `json:"items"`
+			} `json:"data"`
+		} `json:"characterInventories"`
+		CharacterEquipment *struct {
+			Data map[string]*struct {
+				Items []*struct {
+					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
+					ItemHash       uint   `json:"itemHash"`
+					InstanceID     string `json:"itemInstanceId"`
+					BucketHash     uint   `json:"bucketHash"`
+					Lockable       bool   `json:"lockable"`
+					BindStatus     int    `json:"bindStatus"`
+					State          int    `json:"state"`
+					Location       int    `json:"location"`
+					TransferStatus int    `json:"transferStatus"`
+					Quantity       int    `json:"quantity"`
+				} `json:"items"`
+			} `json:"data"`
+		} `json:"characterEquipment"`
+		ProfileInventory *struct {
+			Data *struct {
+				Items []*struct {
+					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
+					ItemHash       uint   `json:"itemHash"`
+					InstanceID     string `json:"itemInstanceId"`
+					BucketHash     uint   `json:"bucketHash"`
+					Lockable       bool   `json:"lockable"`
+					BindStatus     int    `json:"bindStatus"`
+					State          int    `json:"state"`
+					Location       int    `json:"location"`
+					TransferStatus int    `json:"transferStatus"`
+					Quantity       int    `json:"quantity"`
+				} `json:"Items"`
+			} `json:"Data"`
+		} `json:"profileInventory"`
+		Characters *struct {
+			//https://bungie-net.github.io/multi/schema_Destiny-Entities-Characters-DestinyCharacterComponent.html#schema_Destiny-Entities-Characters-DestinyCharacterComponent
+			Data map[string]*struct {
+				MembershipID         string    `json:"membershipId"`
+				MembershipType       int       `json:"membershipType"`
+				EmblemBackgroundPath string    `json:"emblemBackgroundPath"`
+				RaceType             int       `json:"raceType"`
+				ClassType            int       `json:"classType"`
+				Light                int       `json:"ligth"`
+				CharacterID          string    `json:"characterId"`
+				DateLastPlayed       time.Time `json:"dateLastPlayed"`
+			} `json:"data"`
+		} `json:"Characters"`
+		ProfileCurrencies *struct {
+			Data *struct {
+				Items []*struct {
+					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
+					ItemHash       uint   `json:"itemHash"`
+					InstanceID     string `json:"itemInstanceId"`
+					BucketHash     uint   `json:"bucketHash"`
+					Lockable       bool   `json:"lockable"`
+					BindStatus     int    `json:"bindStatus"`
+					State          int    `json:"state"`
+					Location       int    `json:"location"`
+					TransferStatus int    `json:"transferStatus"`
+					Quantity       int    `json:"quantity"`
+				} `json:"items"`
+			} `json:"data"`
+		} `json:"profileCurrencies"`
+	} `json:"Response"`
+}
+
 // GetAccountResponse is the response from a get current account API call
 // this information needs to be used in all of the character/user specific endpoints.
 type GetAccountResponse struct {
 	Response *struct {
 		DestinyMemberships []*struct {
-			MembershipType uint   `json:"membershipType"`
+			MembershipType int    `json:"membershipType"`
 			DisplayName    string `json:"displayName"`
 			MembershipID   string `json:"membershipId"`
 		} `json:"destinyMemberships"`
@@ -426,7 +537,7 @@ func GetOutboundIP() net.IP {
 // transferItem is a generic transfer method that will handle a full transfer of a specific item to the specified
 // character. This requires a full trip from the source, to the vault, and then to the destination character.
 // By providing a nil destCharacter, the items will be transferred to the vault and left there.
-func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Character, membershipType uint, count int, client *Client) uint {
+func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Character, membershipType int, count int, client *Client) uint {
 
 	// TODO: This should probably take the transferStatus field into account,
 	// if the item is NotTransferrable, don't bother trying.
@@ -510,7 +621,7 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 }
 
 // equipItems is a generic equip method that will handle a equipping a specific item on a specific character.
-func equipItems(itemSet []*Item, characterIndex int, characters []*Character, membershipType uint, client *Client) {
+func equipItems(itemSet []*Item, characterIndex int, characters []*Character, membershipType int, client *Client) {
 
 	var wg sync.WaitGroup
 
@@ -525,7 +636,7 @@ func equipItems(itemSet []*Item, characterIndex int, characters []*Character, me
 
 		// TODO: There is an issue were we are getting throttling responses from the Bungie
 		// servers. There will be an extra delay added here to try and avoid the throttling.
-		go func(item *Item, character *Character, membershipType uint, wait *sync.WaitGroup) {
+		go func(item *Item, character *Character, membershipType int, wait *sync.WaitGroup) {
 
 			defer wg.Done()
 			equipItem(item, character, membershipType, client)
@@ -540,7 +651,7 @@ func equipItems(itemSet []*Item, characterIndex int, characters []*Character, me
 // to perform the action, as well as probably a *Client reference.
 
 // equipItem will take the specified item and equip it on the provided character
-func equipItem(item *Item, character *Character, membershipType uint, client *Client) {
+func equipItem(item *Item, character *Character, membershipType int, client *Client) {
 	fmt.Printf("Equipping item(%d)...\n", item.ItemHash)
 
 	equipRequestBody := map[string]interface{}{

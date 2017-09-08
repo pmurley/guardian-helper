@@ -101,7 +101,7 @@ func findMaxLightLoadout(itemsResponse *ItemsEndpointResponse, destinationIndex 
 	return loadout
 }
 
-func equipLoadout(loadout Loadout, destinationIndex int, itemsResponse *ItemsEndpointResponse, membershipType uint, client *Client) error {
+func equipLoadout(loadout Loadout, destinationIndex int, itemsResponse *ItemsEndpointResponse, membershipType int, client *Client) error {
 
 	characters := itemsResponse.Response.Data.Characters
 	// TODO: This should swap any items that are currently equipped on other characters
@@ -127,7 +127,7 @@ func equipLoadout(loadout Loadout, destinationIndex int, itemsResponse *ItemsEnd
 
 // swapEquippedItem is responsible for equipping a new item on a character that is not the destination
 // of a transfer. This way it free up the item to be equipped by the desired character.
-func swapEquippedItem(item *Item, itemsResponse *ItemsEndpointResponse, bucket EquipmentBucket, membershipType uint, client *Client) {
+func swapEquippedItem(item *Item, itemsResponse *ItemsEndpointResponse, bucket EquipmentBucket, membershipType int, client *Client) {
 
 	// TODO: Currently filtering out exotics to make it easier
 	// This should be more robust. There is no guarantee the character already has an exotic
@@ -154,7 +154,7 @@ func swapEquippedItem(item *Item, itemsResponse *ItemsEndpointResponse, bucket E
 	equipItem(itemToEquip, character, membershipType, client)
 }
 
-func moveLoadoutToCharacter(loadout Loadout, destinationIndex int, characters []*Character, membershipType uint, client *Client) error {
+func moveLoadoutToCharacter(loadout Loadout, destinationIndex int, characters []*Character, membershipType int, client *Client) error {
 
 	transferItem(loadout.toSlice(), characters, characters[destinationIndex], membershipType, -1, client)
 
