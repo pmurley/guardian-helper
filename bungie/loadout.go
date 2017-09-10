@@ -37,10 +37,10 @@ func (l Loadout) toSlice() []*Item {
 	return result
 }
 
-func findMaxLightLoadout(itemsResponse *ItemsEndpointResponse, destinationIndex int) Loadout {
+func findMaxLightLoadout(profile *Profile, destinationID string) Loadout {
 	// Start by filtering all items that are NOT exotics
-	destinationClassType := itemsResponse.Response.Data.Characters[destinationIndex].CharacterBase.ClassType
-	filteredItems := itemsResponse.Response.Data.Items.
+	destinationClassType := profile.Characters.findCharacterFromID(destinationID).ClassType
+	filteredItems := profile.AllItems.
 		FilterItems(itemNotTierTypeFilter, ExoticTier).
 		FilterItems(itemClassTypeFilter, destinationClassType)
 	gearSortedByLight := groupAndSortGear(filteredItems)
@@ -48,18 +48,18 @@ func findMaxLightLoadout(itemsResponse *ItemsEndpointResponse, destinationIndex 
 	// Find the best loadout given just legendary weapons
 	loadout := make(Loadout)
 	for i := Primary; i <= Artifact; i++ {
-		loadout[i] = findBestItemForBucket(i, gearSortedByLight[i], 0)
+		loadout[i] = findBestItemForBucket(i, gearSortedByLight[i], destinationID)
 	}
 
 	// Determine the best exotics to use for both weapons and armor
-	exotics := itemsResponse.Response.Data.Items.
+	exotics := profile.AllItems.
 		FilterItems(itemTierTypeFilter, ExoticTier).
 		FilterItems(itemClassTypeFilter, destinationClassType)
 	exoticsSortedAndGrouped := groupAndSortGear(exotics)
 
 	// Override inventory items with exotics as needed
 	for _, bucket := range [3]EquipmentBucket{Ghost, ClassArmor, Artifact} {
-		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationIndex)
+		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationID)
 		if exoticCandidate != nil && exoticCandidate.PrimaryStat.Value > loadout[bucket].PrimaryStat.Value {
 			fmt.Printf("Overriding %s...\n", bucket)
 			loadout[bucket] = exoticCandidate
@@ -69,7 +69,7 @@ func findMaxLightLoadout(itemsResponse *ItemsEndpointResponse, destinationIndex 
 	var weaponExoticCandidate *Item
 	var weaponBucket EquipmentBucket
 	for _, bucket := range [3]EquipmentBucket{Primary, Special, Heavy} {
-		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationIndex)
+		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationID)
 		if exoticCandidate != nil && exoticCandidate.PrimaryStat.Value > loadout[bucket].PrimaryStat.Value {
 			if weaponExoticCandidate == nil || exoticCandidate.PrimaryStat.Value > weaponExoticCandidate.PrimaryStat.Value {
 				weaponExoticCandidate = exoticCandidate
@@ -85,7 +85,7 @@ func findMaxLightLoadout(itemsResponse *ItemsEndpointResponse, destinationIndex 
 	var armorExoticCandidate *Item
 	var armorBucket EquipmentBucket
 	for _, bucket := range [4]EquipmentBucket{Helmet, Arms, Chest, Legs} {
-		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationIndex)
+		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationID)
 		if exoticCandidate != nil && exoticCandidate.PrimaryStat.Value > loadout[bucket].PrimaryStat.Value {
 			if armorExoticCandidate == nil || exoticCandidate.PrimaryStat.Value > armorExoticCandidate.PrimaryStat.Value {
 				armorExoticCandidate = exoticCandidate
@@ -101,39 +101,39 @@ func findMaxLightLoadout(itemsResponse *ItemsEndpointResponse, destinationIndex 
 	return loadout
 }
 
-func equipLoadout(loadout Loadout, destinationIndex int, itemsResponse *ItemsEndpointResponse, membershipType int, client *Client) error {
+func equipLoadout(loadout Loadout, destinationID string, profile *Profile, membershipType int, client *Client) error {
 
-	characters := itemsResponse.Response.Data.Characters
+	characters := profile.Characters
 	// TODO: This should swap any items that are currently equipped on other characters
 	// to prepare them to be transferred
 	for bucket, item := range loadout {
-		if item.TransferStatus == ItemIsEquipped && item.CharacterIndex != destinationIndex {
-			swapEquippedItem(item, itemsResponse, bucket, membershipType, client)
+		if item.TransferStatus == ItemIsEquipped && item.Character.CharacterID != destinationID {
+			swapEquippedItem(item, profile, bucket, membershipType, client)
 		}
 	}
 
 	// Move all items to the destination character
-	err := moveLoadoutToCharacter(loadout, destinationIndex, characters, membershipType, client)
+	err := moveLoadoutToCharacter(loadout, destinationID, characters, membershipType, client)
 	if err != nil {
 		fmt.Println("Error moving loadout to destination character: ", err.Error())
 		return err
 	}
 
 	// Equip all items that were just transferred
-	equipItems(loadout.toSlice(), destinationIndex, characters, membershipType, client)
+	equipItems(loadout.toSlice(), destinationID, characters, membershipType, client)
 
 	return nil
 }
 
 // swapEquippedItem is responsible for equipping a new item on a character that is not the destination
 // of a transfer. This way it free up the item to be equipped by the desired character.
-func swapEquippedItem(item *Item, itemsResponse *ItemsEndpointResponse, bucket EquipmentBucket, membershipType int, client *Client) {
+func swapEquippedItem(item *Item, profile *Profile, bucket EquipmentBucket, membershipType int, client *Client) {
 
 	// TODO: Currently filtering out exotics to make it easier
 	// This should be more robust. There is no guarantee the character already has an exotic
 	// equipped in a different slot and this may be the only option to swap out this item.
-	reverseLightSortedItems := itemsResponse.Response.Data.Items.
-		FilterItems(itemCharacterIndexFilter, item.CharacterIndex).
+	reverseLightSortedItems := profile.AllItems.
+		FilterItems(itemCharacterIDFilter, item.CharacterID).
 		FilterItems(itemBucketHashFilter, item.BucketHash).
 		FilterItems(itemNotTierTypeFilter, ExoticTier)
 
@@ -150,13 +150,13 @@ func swapEquippedItem(item *Item, itemsResponse *ItemsEndpointResponse, bucket E
 	// Now that items are sorted in reverse light order, we want to equip the first item in the slice,
 	// the highest light item will be the last item in the slice.
 	itemToEquip := reverseLightSortedItems[0]
-	character := itemsResponse.Response.Data.Characters[item.CharacterIndex]
+	character := item.Character
 	equipItem(itemToEquip, character, membershipType, client)
 }
 
-func moveLoadoutToCharacter(loadout Loadout, destinationIndex int, characters []*Character, membershipType int, client *Client) error {
+func moveLoadoutToCharacter(loadout Loadout, destinationID string, characters CharacterList, membershipType int, client *Client) error {
 
-	transferItem(loadout.toSlice(), characters, characters[destinationIndex], membershipType, -1, client)
+	transferItem(loadout.toSlice(), characters, characters.findCharacterFromID(destinationID), membershipType, -1, client)
 
 	return nil
 }
@@ -189,7 +189,7 @@ func sortGearBucket(bucketHash uint, inventory ItemList) ItemList {
 	return result
 }
 
-func findBestItemForBucket(bucket EquipmentBucket, items []*Item, destinationIndex int) *Item {
+func findBestItemForBucket(bucket EquipmentBucket, items []*Item, destinationID string) *Item {
 
 	if len(items) <= 0 {
 		return nil
@@ -203,15 +203,15 @@ func findBestItemForBucket(bucket EquipmentBucket, items []*Item, destinationInd
 			break
 		}
 
-		if next.CharacterIndex == destinationIndex && candidate.CharacterIndex != destinationIndex {
+		if next.CharacterID == destinationID && candidate.CharacterID != destinationID {
 			// This next item is the same light and on the destination character already, the current candidate is not
 			candidate = next
-		} else if next.CharacterIndex == destinationIndex && candidate.CharacterIndex == destinationIndex {
+		} else if next.CharacterID == destinationID && candidate.CharacterID == destinationID {
 			if next.TransferStatus == ItemIsEquipped && candidate.TransferStatus != ItemIsEquipped {
 				// The next item is currnetly equipped on the destination character, the current candidate is not
 				candidate = next
 			}
-		} else if candidate.CharacterIndex != destinationIndex && candidate.CharacterIndex != -1 && next.CharacterIndex == -1 {
+		} else if candidate.CharacterID != destinationID && candidate.Character == nil && next.Character != nil {
 			// If the current candidate is on a candidate that is NOT the destination and the next candidate is in the vault,
 			// prefer that since we will only need to do a single transfer request
 			candidate = next

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"net/http/httputil"
 	"os"
 
@@ -22,6 +23,10 @@ var (
 			OnIntent:       EchoIntentHandler,
 			OnLaunch:       EchoIntentHandler,
 			OnSessionEnded: EchoSessionEndedHandler,
+		},
+		"/health": skillserver.StdApplication{
+			Methods: "GET",
+			Handler: healthHandler,
 		},
 	}
 )
@@ -85,7 +90,14 @@ func main() {
 	// }()
 
 	fmt.Println(fmt.Sprintf("Start listening on port(%s)", port))
-	skillserver.Run(Applications, port)
+	err = skillserver.RunSSL(Applications, port, "server.crt", "server.key")
+	if err != nil {
+		fmt.Println("Error starting the application!: ", err.Error())
+	}
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Up"))
 }
 
 // Alexa skill related functions

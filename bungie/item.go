@@ -2,26 +2,59 @@ package bungie
 
 import "fmt"
 
-// ItemsEndpointResponse represents the response from a call to the /Items endpoint
-type ItemsEndpointResponse struct {
-	Response *ItemsResponse `json:"Response"`
+//Item represents a single inventory item returned usually by the GetProfile endpoint
+type Item struct {
+	// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
+	ItemHash       uint   `json:"itemHash"`
+	InstanceID     string `json:"itemInstanceId"`
+	BucketHash     uint   `json:"bucketHash"`
+	Lockable       bool   `json:"lockable"`
+	BindStatus     int    `json:"bindStatus"`
+	State          int    `json:"state"`
+	Location       int    `json:"location"`
+	TransferStatus int    `json:"transferStatus"`
+	Quantity       int    `json:"quantity"`
+	*ItemInstance
+	*Character
+}
+
+// ItemInstance will hold information about a specific instance of an instanced item, this can include item stats,
+// perks, etc. as well as equipped status and things like that.
+type ItemInstance struct {
+	//https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemInstanceComponent.html#schema_Destiny-Entities-Items-DestinyItemInstanceComponent
+	IsEquipped        bool `json:"isEquipped"`
+	CanEquip          bool `json:"canEquip"`
+	Quality           int  `json:"quality"`
+	CannotEquipReason int  `json:"cannotEquipReason"`
+	DamageType        int
+	PrimaryStat       *struct {
+		//https://bungie-net.github.io/multi/schema_Destiny-DestinyStat.html#schema_Destiny-DestinyStat
+		StatHash     uint `json:"statHash"`
+		Value        int  `json:"value"`
+		MaximumValue int  `json:"maximumValue"`
+		ItemLevel    int  `json:"itemLevel"`
+	} `json:"primaryStat"`
+}
+
+// D1ItemsEndpointResponse represents the response from a call to the /Items endpoint
+type D1ItemsEndpointResponse struct {
+	Response *D1ItemsResponse `json:"Response"`
 	Base     *BaseResponse
 }
 
-// ItemsResponse is the inner response from the /Items endpoint
-type ItemsResponse struct {
-	Data *ItemsData `json:"data"`
+// D1ItemsResponse is the inner response from the /Items endpoint
+type D1ItemsResponse struct {
+	Data *D1ItemsData `json:"data"`
 }
 
-// ItemsData is the data attribute of the /Items response
-type ItemsData struct {
+// D1ItemsData is the data attribute of the /Items response
+type D1ItemsData struct {
 	Items      ItemList      `json:"items"`
 	Characters CharacterList `json:"characters"`
 }
 
-// Item will represent a single inventory item returned by the /Items character
-// endpoint.
-type Item struct {
+// D1Item will represent a single inventory item returned by the /Items character endpoint.
+type D1Item struct {
 	ItemHash       uint   `json:"itemHash"`
 	ItemID         string `json:"itemId"`
 	Quantity       uint   `json:"quantity"`
@@ -48,7 +81,15 @@ type ItemMetadata struct {
 }
 
 func (i *Item) String() string {
-	return fmt.Sprintf("Item{itemHash: %d, itemID: %s, light:%d, quantity: %d}", i.ItemHash, i.ItemID, i.PrimaryStat.Value, i.Quantity)
+	if i.ItemInstance != nil {
+		if i.ItemInstance.PrimaryStat != nil {
+			return fmt.Sprintf("Item{itemHash: %d, itemID: %s, light:%d, quantity: %d}", i.ItemHash, i.InstanceID, i.PrimaryStat.Value, i.Quantity)
+		}
+
+		return fmt.Sprintf("Item{itemHash: %d, itemID: %s, quantity: %d}", i.ItemHash, i.InstanceID, i.Quantity)
+	}
+
+	return fmt.Sprintf("Item{itemHash: %d, quantity: %d}", i.ItemHash, i.Quantity)
 }
 
 // ItemFilter is a type that will be used as a paramter to a filter function.
@@ -110,9 +151,9 @@ func itemBucketHashFilter(item *Item, bucketTypeHash interface{}) bool {
 	return item.BucketHash == bucketTypeHash.(uint)
 }
 
-// itemCharacterIndexFilter will filter the list of items by the specified character index
-func itemCharacterIndexFilter(item *Item, characterIndex interface{}) bool {
-	return item.CharacterIndex == characterIndex.(int)
+// itemCharacterIDFilter will filter the list of items by the specified character identifier
+func itemCharacterIDFilter(item *Item, characterID interface{}) bool {
+	return item.Character.CharacterID == characterID.(string)
 }
 
 // itemIsEngramFilter will return true if the item represents an engram; otherwise false.
@@ -141,12 +182,12 @@ func itemClassTypeFilter(item *Item, classType interface{}) bool {
 		(itemMetadata[item.ItemHash].ClassType == classType.(uint))
 }
 
-func (data *ItemsData) characterClassNameAtIndex(index int) string {
+func (data *D1ItemsData) characterClassNameAtIndex(index int) string {
 	if index == -1 {
 		return "Vault"
 	} else if index >= len(data.Characters) {
 		return "Unknown character"
 	} else {
-		return classHashToName[data.Characters[index].CharacterBase.ClassHash]
+		return classHashToName[data.Characters[index].ClassHash]
 	}
 }

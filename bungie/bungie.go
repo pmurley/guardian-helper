@@ -25,155 +25,6 @@ var (
 	Clients = NewClientPool()
 )
 
-// BaseResponse represents the data returned as part of all of the Bungie API
-// requests.
-type BaseResponse struct {
-	ErrorCode       int         `json:"ErrorCode"`
-	ThrottleSeconds int         `json:"ThrottleSeconds"`
-	ErrorStatus     string      `json:"ErrorStatus"`
-	Message         string      `json:"Message"`
-	MessageData     interface{} `json:"MessageData"`
-}
-
-// CurrentUserMembershipsResponse contains information about the membership data for the currently
-// authorized user. The request for this information will use the access_token to determine the current user
-// https://bungie-net.github.io/multi/operation_get_User-GetMembershipDataForCurrentUser.html#operation_get_User-GetMembershipDataForCurrentUser
-type CurrentUserMembershipsResponse struct {
-	*BaseResponse
-	Response *struct {
-		DestinyMemberships []*struct {
-			DisplayName    string `json:"displayName"`
-			MembershipType int    `json:"membershipType"`
-			MembershipID   string `json:"membershipId"`
-		} `json:"destinyMemberships"`
-		BungieNetUser interface{} `json:"bungieNetUser"`
-	} `json:"Response"`
-}
-
-// GetProfileResponse is the response from the GetProfile endpoint. This data contains information about
-// the characeters, inventories, profile inventory, and equipped loadouts.
-// https://bungie-net.github.io/multi/operation_get_Destiny2-GetProfile.html#operation_get_Destiny2-GetProfile
-type GetProfileResponse struct {
-	*BaseResponse
-	Response *struct {
-		Profile *struct {
-			//https://bungie-net.github.io/multi/schema_Destiny-Entities-Profiles-DestinyProfileComponent.html#schema_Destiny-Entities-Profiles-DestinyProfileComponent
-			Data *struct {
-				UserInfo *struct {
-					MembershipType int    `json:"membershipType"`
-					MembershipID   string `json:"membershipId"`
-					DisplayName    string `json:"displayName"`
-				} `json:"userInfo"`
-			} `json:"data"`
-		} `json:"profile"`
-		CharacterInventories *struct {
-			Data map[string]*struct {
-				Items []*struct {
-					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
-					ItemHash       uint   `json:"itemHash"`
-					InstanceID     string `json:"itemInstanceId"`
-					BucketHash     uint   `json:"bucketHash"`
-					Lockable       bool   `json:"lockable"`
-					BindStatus     int    `json:"bindStatus"`
-					State          int    `json:"state"`
-					Location       int    `json:"location"`
-					TransferStatus int    `json:"transferStatus"`
-					Quantity       int    `json:"quantity"`
-				} `json:"items"`
-			} `json:"data"`
-		} `json:"characterInventories"`
-		CharacterEquipment *struct {
-			Data map[string]*struct {
-				Items []*struct {
-					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
-					ItemHash       uint   `json:"itemHash"`
-					InstanceID     string `json:"itemInstanceId"`
-					BucketHash     uint   `json:"bucketHash"`
-					Lockable       bool   `json:"lockable"`
-					BindStatus     int    `json:"bindStatus"`
-					State          int    `json:"state"`
-					Location       int    `json:"location"`
-					TransferStatus int    `json:"transferStatus"`
-					Quantity       int    `json:"quantity"`
-				} `json:"items"`
-			} `json:"data"`
-		} `json:"characterEquipment"`
-		ProfileInventory *struct {
-			Data *struct {
-				Items []*struct {
-					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
-					ItemHash       uint   `json:"itemHash"`
-					InstanceID     string `json:"itemInstanceId"`
-					BucketHash     uint   `json:"bucketHash"`
-					Lockable       bool   `json:"lockable"`
-					BindStatus     int    `json:"bindStatus"`
-					State          int    `json:"state"`
-					Location       int    `json:"location"`
-					TransferStatus int    `json:"transferStatus"`
-					Quantity       int    `json:"quantity"`
-				} `json:"Items"`
-			} `json:"Data"`
-		} `json:"profileInventory"`
-		Characters *struct {
-			//https://bungie-net.github.io/multi/schema_Destiny-Entities-Characters-DestinyCharacterComponent.html#schema_Destiny-Entities-Characters-DestinyCharacterComponent
-			Data map[string]*struct {
-				MembershipID         string    `json:"membershipId"`
-				MembershipType       int       `json:"membershipType"`
-				EmblemBackgroundPath string    `json:"emblemBackgroundPath"`
-				RaceType             int       `json:"raceType"`
-				ClassType            int       `json:"classType"`
-				Light                int       `json:"ligth"`
-				CharacterID          string    `json:"characterId"`
-				DateLastPlayed       time.Time `json:"dateLastPlayed"`
-			} `json:"data"`
-		} `json:"Characters"`
-		ProfileCurrencies *struct {
-			Data *struct {
-				Items []*struct {
-					// DestinyItemComponent https://bungie-net.github.io/multi/schema_Destiny-Entities-Items-DestinyItemComponent.html#schema_Destiny-Entities-Items-DestinyItemComponent
-					ItemHash       uint   `json:"itemHash"`
-					InstanceID     string `json:"itemInstanceId"`
-					BucketHash     uint   `json:"bucketHash"`
-					Lockable       bool   `json:"lockable"`
-					BindStatus     int    `json:"bindStatus"`
-					State          int    `json:"state"`
-					Location       int    `json:"location"`
-					TransferStatus int    `json:"transferStatus"`
-					Quantity       int    `json:"quantity"`
-				} `json:"items"`
-			} `json:"data"`
-		} `json:"profileCurrencies"`
-	} `json:"Response"`
-}
-
-// GetAccountResponse is the response from a get current account API call
-// this information needs to be used in all of the character/user specific endpoints.
-type GetAccountResponse struct {
-	Response *struct {
-		DestinyMemberships []*struct {
-			MembershipType int    `json:"membershipType"`
-			DisplayName    string `json:"displayName"`
-			MembershipID   string `json:"membershipId"`
-		} `json:"destinyMemberships"`
-	} `json:"Response"`
-	Base *BaseResponse
-}
-
-// MembershipIDLookUpResponse represents the response to a Destiny membership ID lookup call
-type MembershipIDLookUpResponse struct {
-	Response        []*MembershipData `json:"Response"`
-	ErrorCode       int               `json:"ErrorCode"`
-	ThrottleSeconds int               `json:"ThrottleSeconds"`
-	ErrorStatus     string            `json:"ErrorStatus"`
-	Message         string            `json:"Message"`
-	MessageData     interface{}       `json:"MessageData"`
-}
-
-// MembershipData represents the Response portion of the membership ID lookup
-type MembershipData struct {
-	MembershipID string `json:"membershipId"`
-}
-
 var engramHashes map[uint]bool
 var itemMetadata map[uint]*ItemMetadata
 
@@ -295,7 +146,7 @@ func PopulateBucketHashLookup() error {
 // TODO: This may no longer be needed as the GetCurrentAccount endpoint should fix all this.
 func MembershipIDFromDisplayName(displayName string) string {
 
-	endpoint := fmt.Sprintf(MembershipIDFromDisplayNameFormat, XBOX, displayName)
+	endpoint := fmt.Sprintf(D1MembershipIDFromDisplayNameFormat, XBOX, displayName)
 	client := Clients.Get()
 	request, _ := http.NewRequest("GET", endpoint, nil)
 	request.Header.Add("X-Api-Key", os.Getenv("BUNGIE_API_KEY"))
@@ -326,8 +177,8 @@ func CountItem(itemName, accessToken string) (*skillserver.EchoResponse, error) 
 	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
 	// Load all items on all characters
-	itemsChannel := make(chan *AllItemsMsg)
-	go GetAllItemsForCurrentUser(client, itemsChannel)
+	profileChannel := make(chan *ProfileMsg)
+	go GetProfileForCurrentUser(client, profileChannel)
 
 	// Check common misinterpretations from Alexa
 	if translation, ok := commonAlexaItemTranslations[itemName]; ok {
@@ -341,15 +192,14 @@ func CountItem(itemName, accessToken string) (*skillserver.EchoResponse, error) 
 		return response, nil
 	}
 
-	itemsJSON, _ := <-itemsChannel
-	if itemsJSON.error != nil {
+	msg, _ := <-profileChannel
+	if msg.error != nil {
 		response.
 			OutputSpeech("Sorry Guardian, I could not load your items from Destiny, you may need to re-link your account in the Alexa app.").
 			LinkAccountCard()
 		return response, nil
 	}
-	itemsData := itemsJSON.ItemsEndpointResponse.Response.Data
-	matchingItems := itemsData.Items.FilterItems(itemHashFilter, hash)
+	matchingItems := msg.Profile.AllItems.FilterItems(itemHashFilter, hash)
 	fmt.Printf("Found %d items entries in characters inventory.\n", len(matchingItems))
 
 	if len(matchingItems) == 0 {
@@ -360,7 +210,7 @@ func CountItem(itemName, accessToken string) (*skillserver.EchoResponse, error) 
 
 	outputString := ""
 	for _, item := range matchingItems {
-		outputString += fmt.Sprintf("Your %s has %d %s. ", itemsData.characterClassNameAtIndex(item.CharacterIndex), item.Quantity, itemName)
+		outputString += fmt.Sprintf("Your %s has %d %s. ", classHashToName[item.Character.ClassHash], item.Quantity, itemName)
 	}
 	response = response.OutputSpeech(outputString)
 
@@ -377,8 +227,8 @@ func TransferItem(itemName, accessToken, sourceClass, destinationClass string, c
 	client := Clients.Get()
 	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
-	itemsChannel := make(chan *AllItemsMsg)
-	go GetAllItemsForCurrentUser(client, itemsChannel)
+	profileChannel := make(chan *ProfileMsg)
+	go GetProfileForCurrentUser(client, profileChannel)
 
 	// Check common misinterpretations from Alexa
 	if translation, ok := commonAlexaItemTranslations[itemName]; ok {
@@ -398,14 +248,13 @@ func TransferItem(itemName, accessToken, sourceClass, destinationClass string, c
 		return response, nil
 	}
 
-	itemsJSON := <-itemsChannel
-	if itemsJSON.error != nil {
+	msg := <-profileChannel
+	if msg.error != nil {
 		fmt.Println("Failed to read the Items response from Bungie!: ", err.Error())
 		return nil, err
 	}
 
-	itemsData := itemsJSON.ItemsEndpointResponse.Response.Data
-	matchingItems := itemsData.Items.FilterItems(itemHashFilter, hash)
+	matchingItems := msg.Profile.AllItems.FilterItems(itemHashFilter, hash)
 	fmt.Printf("Found %d items entries in characters inventory.\n", len(matchingItems))
 
 	if len(matchingItems) == 0 {
@@ -414,8 +263,8 @@ func TransferItem(itemName, accessToken, sourceClass, destinationClass string, c
 		return response, nil
 	}
 
-	allChars := itemsJSON.ItemsEndpointResponse.Response.Data.Characters
-	destCharacter, err := findDestinationCharacter(allChars, destinationClass)
+	allChars := msg.Profile.Characters
+	destCharacter, err := allChars.findDestinationCharacter(destinationClass)
 	if err != nil {
 		output := fmt.Sprintf("Sorry Guardian, I could not transfer your %s because you do not have any %s characters in Destiny.", itemName, destinationClass)
 		fmt.Println(output)
@@ -426,11 +275,10 @@ func TransferItem(itemName, accessToken, sourceClass, destinationClass string, c
 	}
 
 	actualQuantity := transferItem(matchingItems, allChars, destCharacter,
-		itemsJSON.GetAccountResponse.Response.DestinyMemberships[0].MembershipType,
-		count, client)
+		msg.Profile.MembershipType, count, client)
 
 	var output string
-	if count != -1 && actualQuantity < uint(count) {
+	if count != -1 && actualQuantity < count {
 		output = fmt.Sprintf("You only had %d %s on other characters, all of it has been transferred to your %s", actualQuantity, itemName, destinationClass)
 	} else {
 		output = fmt.Sprintf("All set Guardian, %d %s have been transferred to your %s", actualQuantity, itemName, destinationClass)
@@ -448,31 +296,31 @@ func EquipMaxLightGear(accessToken string) (*skillserver.EchoResponse, error) {
 	client := Clients.Get()
 	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
-	itemsChannel := make(chan *AllItemsMsg)
-	go GetAllItemsForCurrentUser(client, itemsChannel)
+	profileChannel := make(chan *ProfileMsg)
+	go GetProfileForCurrentUser(client, profileChannel)
 
-	itemsJSON := <-itemsChannel
-	if itemsJSON.error != nil {
-		fmt.Println("Failed to read the Items response from Bungie!: ", itemsJSON.error.Error())
-		return nil, itemsJSON.error
+	msg := <-profileChannel
+	if msg.error != nil {
+		fmt.Println("Failed to read the Items response from Bungie!: ", msg.error.Error())
+		return nil, msg.error
 	}
 
 	// Transfer to the most recent character on the most recent platform
-	destinationIndex := 0
-	membershipType := itemsJSON.GetAccountResponse.Response.DestinyMemberships[0].MembershipType
+	destinationID := msg.Profile.Characters[0].CharacterID
+	membershipType := msg.Profile.MembershipType
 
-	loadout := findMaxLightLoadout(itemsJSON.ItemsEndpointResponse, destinationIndex)
+	loadout := findMaxLightLoadout(msg.Profile, destinationID)
 
 	fmt.Printf("Found loadout to equip: %v\n", loadout)
 	fmt.Printf("Calculated light for loadout: %f\n", loadout.calculateLightLevel())
 
-	err := equipLoadout(loadout, destinationIndex, itemsJSON.ItemsEndpointResponse, membershipType, client)
+	err := equipLoadout(loadout, destinationID, msg.Profile, membershipType, client)
 	if err != nil {
 		fmt.Println("Failed to equip the specified loadout: ", err.Error())
 		return nil, err
 	}
 
-	characterClass := itemsJSON.ItemsEndpointResponse.Response.Data.characterClassNameAtIndex(0)
+	characterClass := classHashToName[msg.Profile.Characters[0].ClassHash]
 	response.OutputSpeech(fmt.Sprintf("Max light equipped to your %s Guardian. You are a force to be wreckoned with.", characterClass))
 	return response, nil
 }
@@ -484,34 +332,33 @@ func UnloadEngrams(accessToken string) (*skillserver.EchoResponse, error) {
 	client := Clients.Get()
 	client.AddAuthValues(accessToken, os.Getenv("BUNGIE_API_KEY"))
 
-	itemsChannel := make(chan *AllItemsMsg)
-	go GetAllItemsForCurrentUser(client, itemsChannel)
+	profileChannel := make(chan *ProfileMsg)
+	go GetProfileForCurrentUser(client, profileChannel)
 
-	itemsJSON := <-itemsChannel
-	if itemsJSON.error != nil {
-		fmt.Println("Failed to read the Items response from Bungie!: ", itemsJSON.error.Error())
-		return nil, itemsJSON.error
+	msg := <-profileChannel
+	if msg.error != nil {
+		fmt.Println("Failed to read the Items response from Bungie!: ", msg.error.Error())
+		return nil, msg.error
 	}
 
-	matchingItems := itemsJSON.ItemsEndpointResponse.Response.Data.Items.FilterItems(itemIsEngramFilter, true)
+	matchingItems := msg.Profile.AllItems.FilterItems(itemIsEngramFilter, true)
 	if len(matchingItems) == 0 {
 		outputStr := fmt.Sprintf("You don't have any engrams on your current character. Happy farming Guardian!")
 		response.OutputSpeech(outputStr)
 		return response, nil
 	}
 
-	foundCount := uint(0)
+	foundCount := 0
 	for _, item := range matchingItems {
 		foundCount += item.Quantity
 	}
 
 	fmt.Printf("Found %d engrams on all characters\n", foundCount)
 
-	allChars := itemsJSON.ItemsEndpointResponse.Response.Data.Characters
+	allChars := msg.Profile.Characters
 
 	_ = transferItem(matchingItems, allChars, nil,
-		itemsJSON.GetAccountResponse.Response.DestinyMemberships[0].MembershipType,
-		-1, client)
+		msg.Profile.MembershipType, -1, client)
 
 	var output string
 	output = fmt.Sprintf("All set Guardian, your engrams have been transferred to your vault. Happy farming Guardian")
@@ -537,22 +384,23 @@ func GetOutboundIP() net.IP {
 // transferItem is a generic transfer method that will handle a full transfer of a specific item to the specified
 // character. This requires a full trip from the source, to the vault, and then to the destination character.
 // By providing a nil destCharacter, the items will be transferred to the vault and left there.
-func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Character, membershipType int, count int, client *Client) uint {
+func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Character, membershipType int, count int, client *Client) int {
 
 	// TODO: This should probably take the transferStatus field into account,
 	// if the item is NotTransferrable, don't bother trying.
-	var totalCount uint
+	var totalCount int
 	var wg sync.WaitGroup
 
 	for _, item := range itemSet {
 
-		if item.CharacterIndex != -1 && fullCharList[item.CharacterIndex] == destCharacter {
+		if item.Character == destCharacter {
+			// Item is already on the destination character, skipping...
 			continue
 		}
 
 		numToTransfer := item.Quantity
 		if count != -1 {
-			numNeeded := uint(count) - totalCount
+			numNeeded := count - totalCount
 			fmt.Printf("Getting to transfer logic: needed=%d, toTransfer=%d\n", numNeeded, numToTransfer)
 			if numToTransfer > numNeeded {
 				numToTransfer = numNeeded
@@ -570,16 +418,18 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 
 			fmt.Printf("Transferring item: %+v\n", item)
 
+			// TODO: I think this is probably the best way to tell if it is in the vault? maybe need to check the bucket hash instead?
+
 			// If these items are already in the vault, skip it they will be transferred later
-			if item.CharacterIndex != -1 {
+			if item.Character == nil {
 				// These requests are all going TO the vault, the FROM the vault request
 				// will go later for all of these.
 				requestBody := map[string]interface{}{
 					"itemReferenceHash": item.ItemHash,
 					"stackSize":         numToTransfer,
 					"transferToVault":   true,
-					"itemId":            item.ItemID,
-					"characterId":       characters[item.CharacterIndex].CharacterBase.CharacterID,
+					"itemId":            item.InstanceID,
+					"characterId":       item.Character.CharacterID,
 					"membershipType":    membershipType,
 				}
 
@@ -600,8 +450,8 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 				"itemReferenceHash": item.ItemHash,
 				"stackSize":         numToTransfer,
 				"transferToVault":   false,
-				"itemId":            item.ItemID,
-				"characterId":       destCharacter.CharacterBase.CharacterID,
+				"itemId":            item.InstanceID,
+				"characterId":       destCharacter.CharacterID,
 				"membershipType":    membershipType,
 			}
 
@@ -610,7 +460,7 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 
 		}(item, fullCharList, &wg)
 
-		if count != -1 && totalCount >= uint(count) {
+		if count != -1 && totalCount >= count {
 			break
 		}
 	}
@@ -621,13 +471,13 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 }
 
 // equipItems is a generic equip method that will handle a equipping a specific item on a specific character.
-func equipItems(itemSet []*Item, characterIndex int, characters []*Character, membershipType int, client *Client) {
+func equipItems(itemSet []*Item, characterID string, characters CharacterList, membershipType int, client *Client) {
 
 	var wg sync.WaitGroup
 
 	for _, item := range itemSet {
 
-		if item.TransferStatus == ItemIsEquipped && item.CharacterIndex == characterIndex {
+		if item.TransferStatus == ItemIsEquipped && item.Character.CharacterID == characterID {
 			// If this item is already equipped, skip it.
 			continue
 		}
@@ -641,7 +491,7 @@ func equipItems(itemSet []*Item, characterIndex int, characters []*Character, me
 			defer wg.Done()
 			equipItem(item, character, membershipType, client)
 
-		}(item, characters[characterIndex], membershipType, &wg)
+		}(item, characters.findCharacterFromID(characterID), membershipType, &wg)
 	}
 
 	wg.Wait()
@@ -655,8 +505,8 @@ func equipItem(item *Item, character *Character, membershipType int, client *Cli
 	fmt.Printf("Equipping item(%d)...\n", item.ItemHash)
 
 	equipRequestBody := map[string]interface{}{
-		"itemId":         item.ItemID,
-		"characterId":    character.CharacterBase.CharacterID,
+		"itemId":         item.InstanceID,
+		"characterId":    character.CharacterID,
 		"membershipType": membershipType,
 	}
 
@@ -666,25 +516,44 @@ func equipItem(item *Item, character *Character, membershipType int, client *Cli
 // AllItemsMsg is a type used by channels that need to communicate back from a
 // goroutine to the calling function.
 type AllItemsMsg struct {
-	*ItemsEndpointResponse
-	*GetAccountResponse
+	*D1ItemsEndpointResponse
+	*D1GetAccountResponse
 	error
 }
 
-// GetAllItemsForCurrentUser will perform a lookup of the current user based on
-// the OAuth credentials provided by Alexa. Then it will make a request to get
-// all of the items for that user on all characters.
-func GetAllItemsForCurrentUser(client *Client, responseChan chan *AllItemsMsg) {
+// Profile contains all information about a specific Destiny membership, including character and inventory information.
+type Profile struct {
+	MembershipType int
+	MembershipID   string
+	DateLastPlayed time.Time
+	DisplayName    string
+	Characters     CharacterList
+
+	AllItems ItemList
+	//Equipments       map[string]ItemList
+	//Inventories      map[string]ItemList
+	//ProfileInventory ItemList
+	//Currencies       ItemList
+}
+
+// ProfileMsg is a wrapper around a Profile struct that should be used exclusively for sending a Profile
+// over a channel, or at least in cases where an error also needs to be sent to indicate failures.
+type ProfileMsg struct {
+	*Profile
+	error
+}
+
+// GetProfileForCurrentUser will retrieve the Profile data for the currently logged in user (determined by the access_token)
+func GetProfileForCurrentUser(client *Client, responseChan chan *ProfileMsg) {
 
 	// TODO: check error
 	currentAccount, _ := client.GetCurrentAccount()
 
 	if currentAccount == nil {
 		fmt.Println("Failed to load current account with the specified access token!")
-		responseChan <- &AllItemsMsg{
-			ItemsEndpointResponse: nil,
-			GetAccountResponse:    nil,
-			error:                 errors.New("Couldn't load current user information"),
+		responseChan <- &ProfileMsg{
+			Profile: nil,
+			error:   errors.New("Couldn't load current user information"),
 		}
 
 		return
@@ -694,24 +563,72 @@ func GetAllItemsForCurrentUser(client *Client, responseChan chan *AllItemsMsg) {
 	// maybe require it to be specified in the Alexa voice command.
 	membership := currentAccount.Response.DestinyMemberships[0]
 
-	items, err := client.GetUserItems(membership.MembershipType, membership.MembershipID)
+	profileResponse, err := client.GetUserProfileData(membership.MembershipType, membership.MembershipID)
 	if err != nil {
-		fmt.Println("Failed to read the Items response from Bungie!: ", err.Error())
-		responseChan <- &AllItemsMsg{
-			ItemsEndpointResponse: nil,
-			GetAccountResponse:    currentAccount,
-			error:                 errors.New("Failed to read current user's items: " + err.Error()),
+		fmt.Println("Failed to read the Profile response from Bungie!: ", err.Error())
+		responseChan <- &ProfileMsg{
+			Profile: nil,
+			error:   errors.New("Failed to read current user's profile: " + err.Error()),
 		}
 		return
 	}
 
-	for _, char := range items.Response.Data.Characters {
-		fmt.Printf("Found character(%s) with last played date: %+v\n", classHashToName[char.CharacterBase.ClassHash], char.CharacterBase.DateLastPlayed)
+	for _, char := range profileResponse.Response.Characters.Data {
+		fmt.Printf("Found character(%s) with last played date: %+v\n", classHashToName[char.ClassHash], char.DateLastPlayed)
 	}
 
-	responseChan <- &AllItemsMsg{
-		ItemsEndpointResponse: items,
-		GetAccountResponse:    currentAccount,
-		error:                 nil,
+	profile := fixupProfileFromProfileResponse(profileResponse)
+
+	responseChan <- &ProfileMsg{
+		Profile: profile,
+		error:   nil,
 	}
+}
+
+func fixupProfileFromProfileResponse(response *GetProfileResponse) *Profile {
+	profile := &Profile{
+		MembershipID:   response.Response.Profile.Data.UserInfo.MembershipID,
+		MembershipType: response.Response.Profile.Data.UserInfo.MembershipType,
+	}
+
+	totalItemCount := len(response.Response.ProfileCurrencies.Data.Items) + len(response.Response.ProfileInventory.Data.Items)
+	for id := range response.Response.Characters.Data {
+		totalItemCount += len(response.Response.CharacterEquipment.Data[id].Items)
+		totalItemCount += len(response.Response.CharacterInventories.Data[id].Items)
+	}
+
+	items := make(ItemList, 0, totalItemCount)
+
+	items = append(items, response.Response.ProfileCurrencies.Data.Items...)
+
+	for _, item := range response.Response.ProfileInventory.Data.Items {
+		if item.InstanceID != "" {
+			item.ItemInstance = response.Response.ItemComponents.Instances.Data[item.InstanceID]
+		}
+	}
+	items = append(items, response.Response.ProfileInventory.Data.Items...)
+
+	for charID, list := range response.Response.CharacterEquipment.Data {
+		for _, item := range list.Items {
+			item.Character = response.Response.Characters.Data[charID]
+			if item.InstanceID != "" {
+				item.ItemInstance = response.Response.ItemComponents.Instances.Data[item.InstanceID]
+			}
+		}
+
+		items = append(items, list.Items...)
+	}
+
+	for charID, list := range response.Response.CharacterInventories.Data {
+		for _, item := range list.Items {
+			item.Character = response.Response.Characters.Data[charID]
+			if item.InstanceID != "" {
+				item.ItemInstance = response.Response.ItemComponents.Instances.Data[item.InstanceID]
+			}
+		}
+		items = append(items, list.Items...)
+	}
+
+	profile.AllItems = items
+	return profile
 }

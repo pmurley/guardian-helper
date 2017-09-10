@@ -36,7 +36,7 @@ func BenchmarkFiltering(b *testing.B) {
 func BenchmarkMaxLight(b *testing.B) {
 	PopulateItemMetadata()
 	PopulateBucketHashLookup()
-	itemsResponse, err := loadItemEndpointResponse()
+	_, err := loadItemEndpointResponse()
 	if err != nil {
 		b.Fail()
 		return
@@ -45,7 +45,24 @@ func BenchmarkMaxLight(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		findMaxLightLoadout(itemsResponse, 0)
+		// TODO: Fix this benchmark
+		//findMaxLightLoadout(itemsResponse, "")
+	}
+}
+
+func BenchmarkFixupProfileFromProfileResponse(b *testing.B) {
+	response, err := getCurrentProfileResponse()
+	if err != nil {
+		b.FailNow()
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		profile := fixupProfileFromProfileResponse(response)
+		if profile == nil {
+			b.FailNow()
+		}
 	}
 }
 
@@ -82,16 +99,9 @@ func TestParseCurrentMembershipsResponse(t *testing.T) {
 }
 
 func TestParseGetProfileResponse(t *testing.T) {
-	data, err := readSample("GetProfile.json")
-	if err != nil {
-		fmt.Println("Error reading sample file: ", err.Error())
-		t.FailNow()
-	}
 
-	var response GetProfileResponse
-	err = json.Unmarshal(data, &response)
+	response, err := getCurrentProfileResponse()
 	if err != nil {
-		fmt.Println("Error unmarshaling json: ", err.Error())
 		t.FailNow()
 	}
 
@@ -127,6 +137,38 @@ func TestParseGetProfileResponse(t *testing.T) {
 	}
 }
 
+func TestFixupProfileFromProfileResponse(t *testing.T) {
+
+	response, err := getCurrentProfileResponse()
+	if err != nil {
+		t.FailNow()
+	}
+
+	profile := fixupProfileFromProfileResponse(response)
+	if profile == nil {
+		t.FailNow()
+	}
+
+	//fmt.Println("Loaded items: ", profile.AllItems)
+}
+
+func getCurrentProfileResponse() (*GetProfileResponse, error) {
+	data, err := readSample("GetProfile.json")
+	if err != nil {
+		fmt.Println("Error reading sample file: ", err.Error())
+		return nil, err
+	}
+
+	var response GetProfileResponse
+	err = json.Unmarshal(data, &response)
+	if err != nil {
+		fmt.Println("Error unmarshaling json: ", err.Error())
+		return nil, err
+	}
+
+	return &response, nil
+}
+
 func readSample(name string) ([]byte, error) {
 	f, err := os.Open("../local_tools/samples/" + name)
 	if err != nil {
@@ -136,7 +178,7 @@ func readSample(name string) ([]byte, error) {
 	return ioutil.ReadAll(f)
 }
 
-func loadItemEndpointResponse() (*ItemsEndpointResponse, error) {
+func loadItemEndpointResponse() (*D1ItemsEndpointResponse, error) {
 
 	f, err := os.Open("../local_tools/samples/get_all_items_summary-latest.json")
 	if err != nil {
@@ -150,7 +192,7 @@ func loadItemEndpointResponse() (*ItemsEndpointResponse, error) {
 		return nil, err
 	}
 
-	var response ItemsEndpointResponse
+	var response D1ItemsEndpointResponse
 	err = json.Unmarshal(b, &response)
 	if err != nil {
 		fmt.Println("Error unmarshal-ing the all items response!!: ", err.Error())

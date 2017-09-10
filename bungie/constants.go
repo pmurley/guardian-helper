@@ -6,12 +6,42 @@ const (
 	//ItemsEndpointFormat       = "http://localhost:8000/%d/%s/items.json"
 	//TransferItemEndpointURL           = "http://localhost:8000/d1/Platform/Destiny/TransferItem/"
 	//EquipItemEndpointURL              = "http://localhost:8000/d1/Platform/Destiny/EquipItem/"
-	GetCurrentAccountEndpoint         = "https://www.bungie.net/Platform/User/GetCurrentBungieAccount/"
-	ItemsEndpointFormat               = "https://www.bungie.net/d1/Platform/Destiny/%d/Account/%s/Items"
-	MembershipIDFromDisplayNameFormat = "https://www.bungie.net/d1/Platform/Destiny/SearchDestinyPlayer/%d/%s/"
-	TransferItemEndpointURL           = "https://www.bungie.net/d1/Platform/Destiny/TransferItem/"
-	EquipItemEndpointURL              = "https://www.bungie.net/d1/Platform/Destiny/EquipItem/"
-	TrialsCurrentEndpoint             = "https://api.destinytrialsreport.com/currentMap"
+	GetCurrentAccountEndpoint            = "https://www.bungie.net/Platform/User/GetCurrentBungieAccount/"
+	GetMembershipsForCurrentUserEndpoint = "https://www.bungie.net/Platform/User/GetMembershipsForCurrentUser/"
+	GetProfileEndpointFormat             = "https://www.bungie.net/platform/Destiny2/%d/Profile/%s"
+	D1ItemsEndpointFormat                = "https://www.bungie.net/d1/Platform/Destiny/%d/Account/%s/Items"
+	D1MembershipIDFromDisplayNameFormat  = "https://www.bungie.net/d1/Platform/Destiny/SearchDestinyPlayer/%d/%s/"
+	D1TransferItemEndpointURL            = "https://www.bungie.net/d1/Platform/Destiny/TransferItem/"
+	D1EquipItemEndpointURL               = "https://www.bungie.net/d1/Platform/Destiny/EquipItem/"
+	D1TrialsCurrentEndpoint              = "https://api.destinytrialsreport.com/currentMap"
+)
+
+// Component constant values that are needed for certain Bungie API requests that specify which
+// collections of values should be returned in the response.
+const (
+	ProfilesComponent              = "100"
+	VendorReceiptsComponent        = "101"
+	ProfileInventoriesComponent    = "102"
+	ProfileCurrenciesComponent     = "103"
+	CharactersComponent            = "200"
+	CharacterInventoriesComponent  = "201"
+	CharacterProgressionsComponent = "202"
+	CharacterRenderDataComponent   = "203"
+	CharacterActivitiesComponent   = "204"
+	CharacterEquipmentComponent    = "205"
+	ItemInstancesComponent         = "300"
+	ItemObjectivesComponent        = "301"
+	ItemPerksComponent             = "302"
+	ItemRenderDataComponent        = "303"
+	ItemStatsComponent             = "304"
+	ItemSocketsComponent           = "305"
+	ItemTalentGridsComponent       = "306"
+	ItemCommonDataComponent        = "307"
+	ItemPlugStatesComponent        = "308"
+	VendorsComponent               = "400"
+	VendorCategoriesComponent      = "401"
+	VendorSalesComponent           = "402"
+	KiosksComponent                = "500"
 )
 
 // Destiny.TierType
