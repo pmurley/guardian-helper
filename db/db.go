@@ -16,6 +16,7 @@ type LookupDB struct {
 	NameFromHashStmt *sql.Stmt
 	EngramHashStmt   *sql.Stmt
 	ItemMetadataStmt *sql.Stmt
+	RandomJokeStmt   *sql.Stmt
 }
 
 var db1 *LookupDB
@@ -61,12 +62,19 @@ func InitDatabase() error {
 		return err
 	}
 
+	randomJokeStmt, err := db.Prepare("SELECT * FROM jokes offset random() * (SELECT COUNT(*) FROM jokes) LIMIT 1")
+	if err != nil {
+		fmt.Println("DB prepare error: ", err.Error())
+		return err
+	}
+
 	db1 = &LookupDB{
 		Database:         db,
 		HashFromNameStmt: stmt,
 		NameFromHashStmt: nameFromHashStmt,
 		EngramHashStmt:   engramHashStmt,
 		ItemMetadataStmt: itemMetadataStmt,
+		RandomJokeStmt:   randomJokeStmt,
 	}
 
 	return nil
@@ -190,4 +198,21 @@ func InsertUnknownValueIntoTable(value, tableName string) {
 	}
 
 	conn.Database.Exec("INSERT INTO "+tableName+" (value) VALUES(?)", value)
+}
+
+// GetRandomJoke will return a setup, punchline, and possibly an error for a random Destiny related joke.
+func GetRandomJoke() (string, string, error) {
+
+	db, err := GetDBConnection()
+	if err != nil {
+		return "", "", err
+	}
+
+	row := db.RandomJokeStmt.QueryRow()
+
+	var setup string
+	var punchline string
+	err = row.Scan(&setup, &punchline)
+
+	return setup, punchline, nil
 }

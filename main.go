@@ -44,6 +44,7 @@ var (
 		"TrialsPersonalTopWeapons": alexa.AuthWrapper(alexa.PersonalTopWeapons),
 		"UnloadEngrams":            alexa.AuthWrapper(alexa.UnloadEngrams),
 		"EquipMaxLight":            alexa.AuthWrapper(alexa.MaxLight),
+		"DestinyJoke":              alexa.DestinyJoke,
 		"AMAZON.HelpIntent":        alexa.HelpPrompt,
 	}
 )
