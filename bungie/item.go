@@ -76,8 +76,9 @@ type D1Item struct {
 // when interacting wth different character's inventories. These values are used so much
 // that it would be a big waste of time to query the manifest data from the DB for every use.
 type ItemMetadata struct {
-	TierType  uint
-	ClassType uint
+	TierType   int
+	ClassType  int
+	BucketHash uint
 }
 
 func (i *Item) String() string {
@@ -90,6 +91,15 @@ func (i *Item) String() string {
 	}
 
 	return fmt.Sprintf("Item{itemHash: %d, quantity: %d}", i.ItemHash, i.Quantity)
+}
+
+// Power is a convenience accessor to return the power level for a specific item or zero if it does not apply.
+func (i *Item) Power() int {
+	if i == nil || i.ItemInstance == nil || i.PrimaryStat == nil {
+		return 0
+	}
+
+	return i.PrimaryStat.Value
 }
 
 // ItemFilter is a type that will be used as a paramter to a filter function.
@@ -112,7 +122,7 @@ type LightSort ItemList
 func (items LightSort) Len() int      { return len(items) }
 func (items LightSort) Swap(i, j int) { items[i], items[j] = items[j], items[i] }
 func (items LightSort) Less(i, j int) bool {
-	return items[i].PrimaryStat.Value < items[j].PrimaryStat.Value
+	return items[i].Power() < items[j].Power()
 }
 
 // FilterItems will filter the receiver slice of Items and return only the items that match the criteria
@@ -146,9 +156,9 @@ func itemHashesFilter(item *Item, hashList interface{}) bool {
 	return false
 }
 
-// itemBucketHashFilter will filter the list of items by the specified bucket hash
+// itemBucketHashIncludingVaultFilter will filter the list of items by the specified bucket hash or the Vault location
 func itemBucketHashFilter(item *Item, bucketTypeHash interface{}) bool {
-	return item.BucketHash == bucketTypeHash.(uint)
+	return itemMetadata[item.ItemHash].BucketHash == bucketTypeHash.(uint)
 }
 
 // itemCharacterIDFilter will filter the list of items by the specified character identifier
@@ -168,18 +178,18 @@ func itemIsEngramFilter(item *Item, wantEngram interface{}) bool {
 
 // itemTierTypeFilter is a filter that will filter out items that are not of the specified tier.
 func itemTierTypeFilter(item *Item, tierType interface{}) bool {
-	return itemMetadata[item.ItemHash].TierType == tierType.(uint)
+	return itemMetadata[item.ItemHash].TierType == tierType.(int)
 }
 
 func itemNotTierTypeFilter(item *Item, tierType interface{}) bool {
-	return itemMetadata[item.ItemHash].TierType != tierType.(uint)
+	return itemMetadata[item.ItemHash].TierType != tierType.(int)
 }
 
 // itemClassTypeFilter will filter out all items that are not equippable by the specified class
 func itemClassTypeFilter(item *Item, classType interface{}) bool {
 	// TODO: Is this correct? 3 is UNKNOWN class type, that seems to be what is used for class agnostic items.
 	return (itemMetadata[item.ItemHash].ClassType == 3) ||
-		(itemMetadata[item.ItemHash].ClassType == classType.(uint))
+		(itemMetadata[item.ItemHash].ClassType == classType.(int))
 }
 
 func (data *D1ItemsData) characterClassNameAtIndex(index int) string {

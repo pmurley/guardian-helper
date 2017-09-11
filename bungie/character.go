@@ -40,7 +40,7 @@ type D1CharacterBase struct {
 	CurrentActivityHash    uint      `json:"currentActivityHash"`
 	LastCompletedStoryHash uint      `json:"lastCompletedStoryHash"`
 	GenderType             uint      `json:"genderType"`
-	ClassType              uint      `json:"ClassType"`
+	ClassType              int       `json:"ClassType"`
 }
 
 // CharacterList represents a slice of Character pointers.

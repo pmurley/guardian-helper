@@ -12,25 +12,25 @@ func (l Loadout) calculateLightLevel() float64 {
 
 	light := 0.0
 
-	light += float64(l[Primary].PrimaryStat.Value) * 0.12
-	light += float64(l[Special].PrimaryStat.Value) * 0.12
-	light += float64(l[Heavy].PrimaryStat.Value) * 0.12
-	light += float64(l[Ghost].PrimaryStat.Value) * 0.08
+	light += float64(l[Kinetic].Power()) * 0.143
+	light += float64(l[Energy].Power()) * 0.143
+	light += float64(l[Power].Power()) * 0.143
+	//light += float64(l[Ghost].Power()) * 0.08
 
-	light += float64(l[Helmet].PrimaryStat.Value) * 0.10
-	light += float64(l[Arms].PrimaryStat.Value) * 0.10
-	light += float64(l[Chest].PrimaryStat.Value) * 0.10
-	light += float64(l[Legs].PrimaryStat.Value) * 0.10
-	light += float64(l[ClassArmor].PrimaryStat.Value) * 0.08
-	light += float64(l[Artifact].PrimaryStat.Value) * 0.08
+	light += float64(l[Helmet].Power()) * 0.119
+	light += float64(l[Gauntlets].Power()) * 0.119
+	light += float64(l[Chest].Power()) * 0.119
+	light += float64(l[Legs].Power()) * 0.119
+	light += float64(l[ClassArmor].Power()) * 0.095
+	//light += float64(l[Artifact].Power()) * 0.08
 
 	return light
 }
 
 func (l Loadout) toSlice() []*Item {
 
-	result := make([]*Item, 0, Artifact-Primary)
-	for i := Primary; i <= Artifact; i++ {
+	result := make([]*Item, 0, ClassArmor-Kinetic)
+	for i := Kinetic; i <= ClassArmor; i++ {
 		result = append(result, l[i])
 	}
 
@@ -47,7 +47,7 @@ func findMaxLightLoadout(profile *Profile, destinationID string) Loadout {
 
 	// Find the best loadout given just legendary weapons
 	loadout := make(Loadout)
-	for i := Primary; i <= Artifact; i++ {
+	for i := Kinetic; i <= ClassArmor; i++ {
 		loadout[i] = findBestItemForBucket(i, gearSortedByLight[i], destinationID)
 	}
 
@@ -58,9 +58,9 @@ func findMaxLightLoadout(profile *Profile, destinationID string) Loadout {
 	exoticsSortedAndGrouped := groupAndSortGear(exotics)
 
 	// Override inventory items with exotics as needed
-	for _, bucket := range [3]EquipmentBucket{Ghost, ClassArmor, Artifact} {
+	for _, bucket := range [3]EquipmentBucket{ClassArmor} {
 		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationID)
-		if exoticCandidate != nil && exoticCandidate.PrimaryStat.Value > loadout[bucket].PrimaryStat.Value {
+		if exoticCandidate != nil && exoticCandidate.Power() > loadout[bucket].Power() {
 			fmt.Printf("Overriding %s...\n", bucket)
 			loadout[bucket] = exoticCandidate
 		}
@@ -68,10 +68,10 @@ func findMaxLightLoadout(profile *Profile, destinationID string) Loadout {
 
 	var weaponExoticCandidate *Item
 	var weaponBucket EquipmentBucket
-	for _, bucket := range [3]EquipmentBucket{Primary, Special, Heavy} {
+	for _, bucket := range [3]EquipmentBucket{Kinetic, Energy, Power} {
 		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationID)
-		if exoticCandidate != nil && exoticCandidate.PrimaryStat.Value > loadout[bucket].PrimaryStat.Value {
-			if weaponExoticCandidate == nil || exoticCandidate.PrimaryStat.Value > weaponExoticCandidate.PrimaryStat.Value {
+		if exoticCandidate != nil && exoticCandidate.Power() > loadout[bucket].Power() {
+			if weaponExoticCandidate == nil || exoticCandidate.Power() > weaponExoticCandidate.Power() {
 				weaponExoticCandidate = exoticCandidate
 				weaponBucket = bucket
 				fmt.Printf("Overriding %s...\n", bucket)
@@ -84,10 +84,10 @@ func findMaxLightLoadout(profile *Profile, destinationID string) Loadout {
 
 	var armorExoticCandidate *Item
 	var armorBucket EquipmentBucket
-	for _, bucket := range [4]EquipmentBucket{Helmet, Arms, Chest, Legs} {
+	for _, bucket := range [4]EquipmentBucket{Helmet, Gauntlets, Chest, Legs} {
 		exoticCandidate := findBestItemForBucket(bucket, exoticsSortedAndGrouped[bucket], destinationID)
-		if exoticCandidate != nil && exoticCandidate.PrimaryStat.Value > loadout[bucket].PrimaryStat.Value {
-			if armorExoticCandidate == nil || exoticCandidate.PrimaryStat.Value > armorExoticCandidate.PrimaryStat.Value {
+		if exoticCandidate != nil && exoticCandidate.Power() > loadout[bucket].Power() {
+			if armorExoticCandidate == nil || exoticCandidate.Power() > armorExoticCandidate.Power() {
 				armorExoticCandidate = exoticCandidate
 				armorBucket = bucket
 				fmt.Printf("Overriding %s...\n", bucket)
@@ -167,17 +167,17 @@ func groupAndSortGear(inventory ItemList) map[EquipmentBucket]ItemList {
 
 	result := make(map[EquipmentBucket]ItemList)
 
-	result[Primary] = sortGearBucket(bucketHashLookup[Primary], inventory)
-	result[Special] = sortGearBucket(bucketHashLookup[Special], inventory)
-	result[Heavy] = sortGearBucket(bucketHashLookup[Heavy], inventory)
+	result[Kinetic] = sortGearBucket(bucketHashLookup[Kinetic], inventory)
+	result[Energy] = sortGearBucket(bucketHashLookup[Energy], inventory)
+	result[Power] = sortGearBucket(bucketHashLookup[Power], inventory)
 	result[Ghost] = sortGearBucket(bucketHashLookup[Ghost], inventory)
 
 	result[Helmet] = sortGearBucket(bucketHashLookup[Helmet], inventory)
-	result[Arms] = sortGearBucket(bucketHashLookup[Arms], inventory)
+	result[Gauntlets] = sortGearBucket(bucketHashLookup[Gauntlets], inventory)
 	result[Chest] = sortGearBucket(bucketHashLookup[Chest], inventory)
 	result[Legs] = sortGearBucket(bucketHashLookup[Legs], inventory)
 	result[ClassArmor] = sortGearBucket(bucketHashLookup[ClassArmor], inventory)
-	result[Artifact] = sortGearBucket(bucketHashLookup[Artifact], inventory)
+	//result[Artifact] = sortGearBucket(bucketHashLookup[Artifact], inventory)
 
 	return result
 }
@@ -198,21 +198,24 @@ func findBestItemForBucket(bucket EquipmentBucket, items []*Item, destinationID 
 	candidate := items[0]
 	for i := 1; i < len(items); i++ {
 		next := items[i]
-		if next.PrimaryStat.Value < candidate.PrimaryStat.Value {
+		if next.Power() < candidate.Power() {
 			// Lower light value, keep the current candidate
 			break
 		}
 
-		if next.CharacterID == destinationID && candidate.CharacterID != destinationID {
+		if (next.Character != nil && next.CharacterID == destinationID) &&
+			(candidate.Character != nil && candidate.CharacterID != destinationID) {
 			// This next item is the same light and on the destination character already, the current candidate is not
 			candidate = next
-		} else if next.CharacterID == destinationID && candidate.CharacterID == destinationID {
+		} else if (next.Character != nil && next.CharacterID == destinationID) &&
+			(candidate.Character != nil && candidate.CharacterID == destinationID) {
 			if next.TransferStatus == ItemIsEquipped && candidate.TransferStatus != ItemIsEquipped {
 				// The next item is currnetly equipped on the destination character, the current candidate is not
 				candidate = next
 			}
-		} else if candidate.CharacterID != destinationID && candidate.Character == nil && next.Character != nil {
-			// If the current candidate is on a candidate that is NOT the destination and the next candidate is in the vault,
+		} else if (candidate.Character != nil && candidate.CharacterID != destinationID) &&
+			(next.Character == nil) {
+			// If the current candidate is on a character that is NOT the destination and the next candidate is in the vault,
 			// prefer that since we will only need to do a single transfer request
 			candidate = next
 		}

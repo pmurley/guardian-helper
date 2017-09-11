@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -33,18 +35,18 @@ type EquipmentBucket uint
 
 func (bucket EquipmentBucket) String() string {
 	switch bucket {
-	case Primary:
-		return "Primary"
-	case Special:
-		return "Special"
-	case Heavy:
-		return "Heavy"
+	case Kinetic:
+		return "Kinetic"
+	case Energy:
+		return "Energy"
+	case Power:
+		return "Power"
 	case Ghost:
 		return "Ghost"
 	case Helmet:
 		return "Helmet"
-	case Arms:
-		return "Arms"
+	case Gauntlets:
+		return "Gauntlets"
 	case Chest:
 		return "Chest"
 	case Legs:
@@ -60,12 +62,12 @@ func (bucket EquipmentBucket) String() string {
 
 // Equipment bucket type definitions
 const (
-	Primary EquipmentBucket = iota
-	Special
-	Heavy
+	Kinetic EquipmentBucket = iota
+	Energy
+	Power
 	Ghost
 	Helmet
-	Arms
+	Gauntlets
 	Chest
 	Legs
 	ClassArmor
@@ -105,7 +107,7 @@ func PopulateItemMetadata() error {
 	for rows.Next() {
 		var hash uint
 		itemMeta := ItemMetadata{}
-		rows.Scan(&hash, &itemMeta.TierType, &itemMeta.ClassType)
+		rows.Scan(&hash, &itemMeta.TierType, &itemMeta.ClassType, &itemMeta.BucketHash)
 
 		itemMetadata[hash] = &itemMeta
 	}
@@ -125,13 +127,13 @@ func PopulateBucketHashLookup() error {
 	//var err error
 	bucketHashLookup = make(map[EquipmentBucket]uint)
 
-	bucketHashLookup[Primary] = 1498876634
-	bucketHashLookup[Special] = 2465295065
-	bucketHashLookup[Heavy] = 953998645
+	bucketHashLookup[Kinetic] = 1498876634
+	bucketHashLookup[Energy] = 2465295065
+	bucketHashLookup[Power] = 953998645
 	bucketHashLookup[Ghost] = 4023194814
 
 	bucketHashLookup[Helmet] = 3448274439
-	bucketHashLookup[Arms] = 3551918588
+	bucketHashLookup[Gauntlets] = 3551918588
 	bucketHashLookup[Chest] = 14239492
 	bucketHashLookup[Legs] = 20886954
 	bucketHashLookup[Artifact] = 434908299
@@ -210,7 +212,11 @@ func CountItem(itemName, accessToken string) (*skillserver.EchoResponse, error) 
 
 	outputString := ""
 	for _, item := range matchingItems {
-		outputString += fmt.Sprintf("Your %s has %d %s. ", classHashToName[item.Character.ClassHash], item.Quantity, itemName)
+		if item.Character == nil {
+			outputString += fmt.Sprintf("You have %d %s on your account", item.Quantity, itemName)
+		} else {
+			outputString += fmt.Sprintf("Your %s has %d %s. ", classHashToName[item.Character.ClassHash], item.Quantity, itemName)
+		}
 	}
 	response = response.OutputSpeech(outputString)
 
@@ -418,10 +424,11 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 
 			fmt.Printf("Transferring item: %+v\n", item)
 
-			// TODO: I think this is probably the best way to tell if it is in the vault? maybe need to check the bucket hash instead?
+			// TODO: I think this is probably the best way to tell if it is in the vault?
+			// maybe need to check the bucket hash instead?
 
 			// If these items are already in the vault, skip it they will be transferred later
-			if item.Character == nil {
+			if item.Character != nil {
 				// These requests are all going TO the vault, the FROM the vault request
 				// will go later for all of these.
 				requestBody := map[string]interface{}{
@@ -433,8 +440,10 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 					"membershipType":    membershipType,
 				}
 
-				client.PostTransferItem(requestBody)
-				time.Sleep(TransferDelay)
+				transferClient := Clients.Get()
+				transferClient.AddAuthValues(client.AccessToken, client.APIToken)
+				transferClient.PostTransferItem(requestBody)
+				//time.Sleep(TransferDelay)
 			}
 
 			// TODO: This could possibly be handled more efficiently if we know the items are uniform,
@@ -455,8 +464,10 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 				"membershipType":    membershipType,
 			}
 
-			client.PostTransferItem(vaultToCharRequestBody)
-			time.Sleep(TransferDelay)
+			transferClient := Clients.Get()
+			transferClient.AddAuthValues(client.AccessToken, client.APIToken)
+			transferClient.PostTransferItem(vaultToCharRequestBody)
+			//time.Sleep(TransferDelay)
 
 		}(item, fullCharList, &wg)
 
@@ -473,7 +484,7 @@ func transferItem(itemSet []*Item, fullCharList []*Character, destCharacter *Cha
 // equipItems is a generic equip method that will handle a equipping a specific item on a specific character.
 func equipItems(itemSet []*Item, characterID string, characters CharacterList, membershipType int, client *Client) {
 
-	var wg sync.WaitGroup
+	ids := make([]int64, 0, len(itemSet))
 
 	for _, item := range itemSet {
 
@@ -482,19 +493,22 @@ func equipItems(itemSet []*Item, characterID string, characters CharacterList, m
 			continue
 		}
 
-		wg.Add(1)
-
-		// TODO: There is an issue were we are getting throttling responses from the Bungie
-		// servers. There will be an extra delay added here to try and avoid the throttling.
-		go func(item *Item, character *Character, membershipType int, wait *sync.WaitGroup) {
-
-			defer wg.Done()
-			equipItem(item, character, membershipType, client)
-
-		}(item, characters.findCharacterFromID(characterID), membershipType, &wg)
+		instanceID, err := strconv.ParseInt(item.InstanceID, 10, 64)
+		if err != nil {
+			fmt.Println("Not equipping item because the instance ID could not be parsed to an Int: ", err.Error())
+			continue
+		}
+		ids = append(ids, instanceID)
 	}
 
-	wg.Wait()
+	equipRequestBody := map[string]interface{}{
+		"itemIds":        ids,
+		"characterId":    characterID,
+		"membershipType": membershipType,
+	}
+
+	// Having a single equip call should avoid the throttling problems.
+	client.PostEquipItem(equipRequestBody, true)
 }
 
 // TODO: All of these equip/transfer/etc. action should take a single struct with all the parameters required
@@ -510,7 +524,7 @@ func equipItem(item *Item, character *Character, membershipType int, client *Cli
 		"membershipType": membershipType,
 	}
 
-	client.PostEquipItem(equipRequestBody)
+	client.PostEquipItem(equipRequestBody, false)
 }
 
 // AllItemsMsg is a type used by channels that need to communicate back from a
@@ -573,11 +587,11 @@ func GetProfileForCurrentUser(client *Client, responseChan chan *ProfileMsg) {
 		return
 	}
 
-	for _, char := range profileResponse.Response.Characters.Data {
+	profile := fixupProfileFromProfileResponse(profileResponse)
+
+	for _, char := range profile.Characters {
 		fmt.Printf("Found character(%s) with last played date: %+v\n", classHashToName[char.ClassHash], char.DateLastPlayed)
 	}
-
-	profile := fixupProfileFromProfileResponse(profileResponse)
 
 	responseChan <- &ProfileMsg{
 		Profile: profile,
@@ -591,6 +605,15 @@ func fixupProfileFromProfileResponse(response *GetProfileResponse) *Profile {
 		MembershipType: response.Response.Profile.Data.UserInfo.MembershipType,
 	}
 
+	// Transform character map into an ordered list based on played time.
+	profile.Characters = make([]*Character, 0, len(response.Response.Characters.Data))
+	for _, char := range response.Response.Characters.Data {
+		profile.Characters = append(profile.Characters, char)
+	}
+
+	sort.Sort(sort.Reverse(LastPlayedSort(profile.Characters)))
+
+	// Flatten out the items from different buckets including currencies, inventories, eequipments, etc.
 	totalItemCount := len(response.Response.ProfileCurrencies.Data.Items) + len(response.Response.ProfileInventory.Data.Items)
 	for id := range response.Response.Characters.Data {
 		totalItemCount += len(response.Response.CharacterEquipment.Data[id].Items)

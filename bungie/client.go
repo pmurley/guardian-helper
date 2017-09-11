@@ -175,6 +175,7 @@ func readClientAddresses() []string {
 // Bungie API.
 type Client struct {
 	*http.Client
+	Address     string
 	AccessToken string
 	APIToken    string
 }
@@ -182,7 +183,6 @@ type Client struct {
 // NewCustomAddrClient will create a new Bungie Client instance with the provided local IP address.
 func NewCustomAddrClient(address string) (*Client, error) {
 
-	//ipv6 := fmt.Sprintf("%s::%x", os.Getenv("IPV6_ADDR"), rand.Intn(ipv6Count))
 	localAddr, err := net.ResolveIPAddr("ip6", address)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func NewCustomAddrClient(address string) (*Client, error) {
 
 	httpClient := &http.Client{Transport: transport}
 
-	return &Client{Client: httpClient}, nil
+	return &Client{Client: httpClient, Address: address}, nil
 }
 
 // AddAuthValues will add the specified access token and api key to the provided client
@@ -234,6 +234,8 @@ func (c *Client) AuthenticationHeaders() map[string]string {
 // based on the OAuth token provided as part of the request.
 func (c *Client) GetCurrentAccount() (*CurrentUserMembershipsResponse, error) {
 
+	fmt.Println("Using client with local address: ", c.Address)
+
 	req, _ := http.NewRequest("GET", GetMembershipsForCurrentUserEndpoint, nil)
 	req.Header.Add("Content-Type", "application/json")
 	c.AddAuthHeadersToRequest(req)
@@ -254,6 +256,8 @@ func (c *Client) GetCurrentAccount() (*CurrentUserMembershipsResponse, error) {
 // GetUserProfileData is responsible for loading all of the profiles, characters, equipments, and inventories for all
 // of the supplied user's characters.
 func (c *Client) GetUserProfileData(membershipType int, membershipID string) (*GetProfileResponse, error) {
+
+	fmt.Println("Using client with local address: ", c.Address)
 
 	endpoint := fmt.Sprintf(GetProfileEndpointFormat, membershipType, membershipID)
 
@@ -284,6 +288,9 @@ func (c *Client) GetUserProfileData(membershipType int, membershipID string) (*G
 // items for a specific Destiny membership ID. This includes all of their characters
 // as well as the vault. The vault with have a character index of -1.
 func (c *Client) GetUserItems(membershipType int, membershipID string) (*D1ItemsEndpointResponse, error) {
+
+	fmt.Println("Using client with local address: ", c.Address)
+
 	endpoint := fmt.Sprintf(D1ItemsEndpointFormat, membershipType, membershipID)
 
 	req, _ := http.NewRequest("GET", endpoint, nil)
@@ -307,6 +314,8 @@ func (c *Client) GetUserItems(membershipType int, membershipID string) (*D1Items
 // or the vault.
 func (c *Client) PostTransferItem(body map[string]interface{}) {
 
+	fmt.Println("Using client with local address: ", c.Address)
+
 	// TODO: This retry logic should probably be added to a middleware type function
 	retry := true
 	attempts := 0
@@ -314,7 +323,7 @@ func (c *Client) PostTransferItem(body map[string]interface{}) {
 		retry = false
 		jsonBody, _ := json.Marshal(body)
 
-		req, _ := http.NewRequest("POST", D1TransferItemEndpointURL, strings.NewReader(string(jsonBody)))
+		req, _ := http.NewRequest("POST", TransferItemEndpointURL, strings.NewReader(string(jsonBody)))
 		req.Header.Add("Content-Type", "application/json")
 		c.AddAuthHeadersToRequest(req)
 
@@ -342,8 +351,9 @@ func (c *Client) PostTransferItem(body map[string]interface{}) {
 
 // PostEquipItem is responsible for calling the Bungie.net API to equip
 // an item on a specific character.
-func (c *Client) PostEquipItem(body map[string]interface{}) {
+func (c *Client) PostEquipItem(body map[string]interface{}, isMultipleItems bool) {
 
+	fmt.Println("Using client with local address: ", c.Address)
 	// TODO: This retry logic should probably be added to a middleware type function
 	retry := true
 	attempts := 0
@@ -351,7 +361,11 @@ func (c *Client) PostEquipItem(body map[string]interface{}) {
 		retry = false
 		jsonBody, _ := json.Marshal(body)
 
-		req, _ := http.NewRequest("POST", D1EquipItemEndpointURL, strings.NewReader(string(jsonBody)))
+		endpoint := EquipSingleItemEndpointURL
+		if isMultipleItems {
+			endpoint = EquipMultiItemsEndpointURL
+		}
+		req, _ := http.NewRequest("POST", endpoint, strings.NewReader(string(jsonBody)))
 		req.Header.Add("Content-Type", "application/json")
 		c.AddAuthHeadersToRequest(req)
 

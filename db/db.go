@@ -55,7 +55,7 @@ func InitDatabase() error {
 		return err
 	}
 
-	itemMetadataStmt, err := db.Prepare("SELECT item_hash, tier_type, class_type FROM items")
+	itemMetadataStmt, err := db.Prepare("SELECT item_hash, tier_type, class_type, bucket_type_hash FROM items")
 	if err != nil {
 		fmt.Println("DB error: ", err.Error())
 		return err

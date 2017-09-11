@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"time"
 
 	"github.com/rking788/guardian-helper/bungie"
 
@@ -90,7 +91,7 @@ func main() {
 	// }()
 
 	fmt.Println(fmt.Sprintf("Start listening on port(%s)", port))
-	err = skillserver.RunSSL(Applications, port, "server.crt", "server.key")
+	err = skillserver.RunSSL(Applications, port, "/etc/letsencrypt/live/warmind.network/fullchain.pem", "/etc/letsencrypt/live/warmind.network/privkey.pem")
 	if err != nil {
 		fmt.Println("Error starting the application!: ", err.Error())
 	}
@@ -112,6 +113,12 @@ func EchoSessionEndedHandler(echoRequest *skillserver.EchoRequest, echoResponse 
 // EchoIntentHandler is a handler method that is responsible for receiving the
 // call from a Alexa command and returning the correct speech or cards.
 func EchoIntentHandler(echoRequest *skillserver.EchoRequest, echoResponse *skillserver.EchoResponse) {
+
+	// Time the intent handler to determine if it is taking longer than normal
+	startTime := time.Now()
+	defer func(start time.Time) {
+		fmt.Printf("IntentHandler execution time: %v\n", time.Since(start))
+	}(startTime)
 
 	var response *skillserver.EchoResponse
 
